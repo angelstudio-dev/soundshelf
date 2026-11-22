@@ -1,0 +1,15 @@
+{
+  "name": "soundshelf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted audiobook player for Synology, web, mobile and WeChat Mini Program",
+  "scripts": {
+    "setup": "npm --prefix server install && npm --prefix web install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix server run build && npm --prefix web run build",
+    "start": "npm --prefix server run start",
+    "check": "npm run build"
+  },
+  "license": "MIT"
+}

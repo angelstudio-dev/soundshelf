@@ -1,0 +1,30 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/books/books",
+    "pages/book/book",
+    "pages/player/player",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#111111",
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "SoundShelf",
+    "backgroundColor": "#111111",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#9b9690",
+    "selectedColor": "#c99b72",
+    "backgroundColor": "#1b1b1d",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "首页" },
+      { "pagePath": "pages/books/books", "text": "书籍" },
+      { "pagePath": "pages/settings/settings", "text": "设置" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

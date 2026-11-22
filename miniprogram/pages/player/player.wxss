@@ -1,0 +1,4 @@
+.ctrl { width:88rpx; height:88rpx; border-radius:50%; background:#242426; display:flex; align-items:center; justify-content:center; font-size:24rpx; color:#f5f2ed; }
+.play { width:128rpx; height:128rpx; border-radius:50%; background:#c99b72; color:#201810; display:flex; align-items:center; justify-content:center; font-size:44rpx; }
+.chapter { display:flex; gap:20rpx; padding:22rpx 4rpx; border-bottom:1rpx solid #302f2d; font-size:26rpx; }
+.chapter-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

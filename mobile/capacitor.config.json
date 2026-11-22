@@ -1,0 +1,16 @@
+{
+  "appId": "com.soundshelf.player",
+  "appName": "SoundShelf",
+  "webDir": "../web/dist",
+  "loggingBehavior": "none",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "ios": {
+    "contentInsetAdjustmentBehavior": "automatic"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

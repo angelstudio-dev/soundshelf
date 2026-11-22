@@ -1,0 +1,27 @@
+page {
+  background: #111112;
+  color: #f5f2ed;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+}
+.page { padding: 24rpx 28rpx 180rpx; }
+.h1 { font-family: Georgia, serif; font-size: 58rpx; font-weight: 500; }
+.h2 { font-family: Georgia, serif; font-size: 34rpx; font-weight: 500; }
+.muted { color: #9b9690; font-size: 24rpx; }
+.accent { color: #c99b72; }
+.card { background: #1b1b1d; border: 1rpx solid #302f2d; border-radius: 24rpx; padding: 26rpx; margin-bottom: 24rpx; }
+.row { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.button { background: #c99b72; color: #201810; border-radius: 20rpx; padding: 22rpx 32rpx; font-size: 28rpx; text-align: center; }
+.button.secondary { background: #242426; color: #f5f2ed; border: 1rpx solid #302f2d; }
+.chip { display: inline-block; padding: 12rpx 24rpx; border-radius: 40rpx; background: #1b1b1d; border: 1rpx solid #302f2d; color: #9b9690; font-size: 24rpx; margin-right: 14rpx; }
+.chip.active { color: #c99b72; border-color: #c99b72; background: rgba(201,155,114,.16); }
+.cover { width: 160rpx; height: 240rpx; border-radius: 12rpx; background: #242426; }
+.book-row { display: flex; gap: 22rpx; padding: 18rpx 0; border-bottom: 1rpx solid #302f2d; }
+.book-row .info { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.book-row .title { font-size: 28rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cover-scroll { display: flex; white-space: nowrap; margin: 12rpx 0 24rpx; }
+.cover-item { display: inline-block; width: 168rpx; margin-right: 20rpx; vertical-align: top; }
+.cover-item image { width: 168rpx; height: 252rpx; border-radius: 12rpx; }
+.cover-item .name { font-size: 22rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 10rpx; }
+.empty { color: #9b9690; font-size: 24rpx; text-align: center; padding: 48rpx 0; }
+.input { background: #242426; border: 1rpx solid #302f2d; border-radius: 16rpx; padding: 20rpx; font-size: 28rpx; margin-bottom: 18rpx; }

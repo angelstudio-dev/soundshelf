@@ -1,0 +1,32 @@
+<wxs src="../../utils/format.wxs" module="fmt" />
+<view class="page player">
+  <image src="{{book.coverUrl}}" mode="aspectFill" style="width:420rpx;height:420rpx;border-radius:24rpx;margin:30rpx auto;display:block" />
+  <view class="h2" style="text-align:center">{{book.title}}</view>
+  <view class="muted" style="text-align:center;margin-top:8rpx">{{book.author}} · {{chapterTitle}}</view>
+
+  <slider min="0" max="{{duration}}" value="{{position}}" activeColor="#c99b72" block-color="#c99b72"
+    block-size="18" bindchange="onSlider" style="margin-top:40rpx" />
+  <view class="row between muted" style="font-size:22rpx">
+    <view>{{fmt.time(position)}}</view>
+    <view>{{fmt.time(duration)}}</view>
+  </view>
+
+  <view class="row" style="justify-content:space-around;margin:44rpx 0">
+    <view class="ctrl" bindtap="setSleep">定时</view>
+    <view class="ctrl" bindtap="skip" data-delta="-15">-15</view>
+    <view class="play" bindtap="toggle">{{playing ? '❚❚' : '▶'}}</view>
+    <view class="ctrl" bindtap="skip" data-delta="30">+30</view>
+    <view class="ctrl" bindtap="changeSpeed">{{speed}}×</view>
+  </view>
+
+  <view class="row" style="gap:16rpx;margin-bottom:24rpx">
+    <button class="button secondary" style="flex:1" bindtap="addBookmark">添加书签</button>
+    <button class="button secondary" style="flex:1" bindtap="setSleep">睡眠定时 {{sleepText}}</button>
+  </view>
+
+  <view class="h2" style="margin-top:20rpx">章节</view>
+  <view class="chapter" wx:for="{{book.chapters}}" wx:key="id" bindtap="toChapter" data-index="{{index}}">
+    <view class="muted">{{index + 1}}</view>
+    <view class="chapter-title">{{item.title}}</view>
+  </view>
+</view>

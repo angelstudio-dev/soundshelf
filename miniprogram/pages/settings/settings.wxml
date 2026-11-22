@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="muted">SOUNDSHELF</view>
+  <view class="h1">设置</view>
+
+  <view class="card" style="margin-top:30rpx">
+    <view class="h2">服务器</view>
+    <view class="muted" style="margin:12rpx 0 20rpx">填写群晖上 SoundShelf 的 HTTPS 地址，例如 https://nas.example.com:3000</view>
+    <input class="input" placeholder="https://..." value="{{baseUrl}}" bindinput="onBaseUrl" />
+    <button class="button secondary" bindtap="saveBase">保存地址</button>
+  </view>
+
+  <view class="card" wx:if="{{!loggedIn}}">
+    <view class="h2">登录</view>
+    <input class="input" style="margin-top:18rpx" placeholder="用户名" value="{{username}}" bindinput="onUsername" />
+    <input class="input" password placeholder="密码" value="{{password}}" bindinput="onPassword" />
+    <button class="button" bindtap="doLogin">登录</button>
+  </view>
+
+  <view class="card" wx:if="{{loggedIn}}">
+    <view class="row between">
+      <view class="h2">书源</view>
+      <button class="button secondary" style="padding:12rpx 20rpx" bindtap="loadSources">刷新</button>
+    </view>
+    <view class="source" wx:for="{{sources}}" wx:key="id">
+      <view>
+        <view style="font-size:28rpx">{{item.name}}</view>
+        <view class="muted">{{item.type}} · {{item.book_count}} 本书</view>
+      </view>
+      <button class="button secondary" style="padding:12rpx 20rpx" bindtap="sync" data-id="{{item.id}}">同步</button>
+    </view>
+    <button class="button secondary" style="margin-top:20rpx" bindtap="logout">退出登录</button>
+  </view>
+
+  <view wx:if="{{message}}" class="card accent">{{message}}</view>
+  <view class="muted" style="text-align:center;margin-top:40rpx">小程序不支持 Apple Watch / CarPlay / 端侧转录</view>
+</view>

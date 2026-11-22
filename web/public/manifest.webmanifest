@@ -1,0 +1,10 @@
+{
+  "name": "SoundShelf 自托管有声书",
+  "short_name": "SoundShelf",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "description": "收听你自己的有声书库",
+  "icons": []
+}
