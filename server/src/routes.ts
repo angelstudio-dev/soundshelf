@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { Readable } from 'node:stream';
-import { Router, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
 import { issueTokenPair, revokeRefreshToken, requireAuth, rotateRefreshToken, verifyPassword, hashPassword } from './auth.js';
 import { config } from './config.js';
@@ -27,6 +27,14 @@ const body = <T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> => 
   const result = schema.safeParse(value);
   if (!result.success) throw badRequest('请求参数不正确', result.error.flatten());
   return result.data;
+};
+
+// Express 4 不会捕获 async handler 返回的 rejected Promise；未处理的 rejection
+// 在 Node 22 下会直接终止进程。统一把异步错误转交给错误处理中间件。
+const asyncRoute = (
+  handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>
+): RequestHandler => (req, res, next) => {
+  void Promise.resolve(handler(req, res, next)).catch(next);
 };
 
 const userId = (req: Request): string => {
@@ -116,10 +124,10 @@ api.delete('/libraries/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-api.post('/libraries/:id/sync', requireAuth, async (req, res) => {
+api.post('/libraries/:id/sync', requireAuth, asyncRoute(async (req, res) => {
   const result = await syncSource(req.params.id);
   res.json(result);
-});
+}));
 
 // ---------- 书库 ----------
 api.get('/home', requireAuth, (req, res) => {
@@ -167,7 +175,7 @@ function parseRange(header: string | undefined, size: number): { start: number; 
   return { start, end: Math.min(end, size - 1) };
 }
 
-api.get('/books/:id/stream', requireAuth, async (req, res) => {
+api.get('/books/:id/stream', requireAuth, asyncRoute(async (req, res) => {
   const target = await resolveStreamTarget(req.params.id, req.query.track ? String(req.query.track) : undefined);
   res.setHeader('Accept-Ranges', 'bytes');
 
@@ -201,9 +209,9 @@ api.get('/books/:id/stream', requireAuth, async (req, res) => {
     return;
   }
   throw notFound('音频文件不可访问');
-});
+}));
 
-api.get('/assets/cover/:bookId', requireAuth, async (req, res) => {
+api.get('/assets/cover/:bookId', requireAuth, asyncRoute(async (req, res) => {
   const target = coverTarget(req.params.bookId);
   if (target.filePath && existsSync(target.filePath)) {
     res.sendFile(target.filePath);
@@ -225,7 +233,7 @@ api.get('/assets/cover/:bookId', requireAuth, async (req, res) => {
     return;
   }
   throw notFound('封面不存在');
-});
+}));
 
 // ---------- 进度 ----------
 api.get('/progress', requireAuth, (req, res) => res.json({ progress: listProgress(userId(req)) }));

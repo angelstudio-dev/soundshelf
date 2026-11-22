@@ -39,3 +39,12 @@ function shutdown(signal: string): void {
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
+
+// 最后一道防线：单个请求/定时任务的异常不应让整个服务进程退出。
+// 路由层的 asyncRoute 与各处的 try/catch 已覆盖已知路径，这里记录任何漏网之鱼。
+process.on('unhandledRejection', (reason) => {
+  logger.error({ reason: reason instanceof Error ? reason.stack ?? reason.message : String(reason) }, 'unhandled promise rejection');
+});
+process.on('uncaughtException', (error) => {
+  logger.error({ error: error.stack ?? error.message }, 'uncaught exception');
+});

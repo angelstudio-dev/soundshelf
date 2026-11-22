@@ -133,6 +133,16 @@ function persistBook(source: SourceRow, raw: RawBook, now: number): void {
 
 export async function syncSource(id: string): Promise<{ books: number; collections: number; errors: string[] }> {
   const source = getSource(id);
+  // 演示书库由 seedDemoData 直接写入数据库，没有上游适配器可同步。
+  // 这里返回当前条目数而不是抛错，避免演示模式下点击「同步书源」把服务打挂。
+  if (source.type === 'demo') {
+    const books = (db.prepare('SELECT COUNT(*) AS count FROM books WHERE source_id = ?').get(id) as { count: number }).count;
+    const collections = (db.prepare('SELECT COUNT(*) AS count FROM collections WHERE source_id = ?').get(id) as { count: number }).count;
+    const now = Math.floor(Date.now() / 1000);
+    db.prepare('UPDATE sources SET last_synced_at = ? WHERE id = ?').run(now, id);
+    logger.info({ sourceId: id, books, collections }, 'demo source sync skipped (no upstream)');
+    return { books, collections, errors: [] };
+  }
   const adapter = adapterFor(source);
   const now = Math.floor(Date.now() / 1000);
   const errors: string[] = [];
