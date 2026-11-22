@@ -25,7 +25,7 @@ const server = app.listen(config.PORT, config.HOST, () => {
   logger.info({ host: config.HOST, port: config.PORT, env: config.NODE_ENV }, 'SoundShelf API started');
 });
 
-if (!config.demoMode) void syncAllSources();
+if (!config.demoMode && !config.skipStartupSync) void syncAllSources();
 startWorker();
 
 function shutdown(signal: string): void {

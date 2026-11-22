@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { upstreamError } from '../errors.js';
-import type { RawBook, RawChapter, RawCollection, RawTrack, SourceAdapter, SourceRow } from './types.js';
+import type { RawBook, RawChapter, RawCollection, RawTrack, SourceAdapter, SourceLibrary, SourceRow } from './types.js';
 
 type Json = Record<string, any>;
 
@@ -31,12 +31,27 @@ export class AudiobookshelfAdapter implements SourceAdapter {
     return response.json() as Promise<T>;
   }
 
+  async listLibraries(): Promise<SourceLibrary[]> {
+    const data = await this.request<{ libraries: Json[] }>('/api/libraries');
+    return (data.libraries ?? []).map((library) => ({
+      key: String(library.id),
+      title: str(library.name) || '未命名资料库',
+      type: str(library.mediaType) || 'book'
+    }));
+  }
+
+  private selectedLibraryIds(): string[] {
+    try { return JSON.parse(this.source.extra || '{}').libraryIds ?? []; } catch { return []; }
+  }
+
   async listBooks(): Promise<RawBook[]> {
     const libraries = await this.request<{ libraries: Json[] }>('/api/libraries');
     const results: RawBook[] = [];
+    const libraryIds = this.selectedLibraryIds();
 
     for (const library of libraries.libraries ?? []) {
       if (library.mediaType && library.mediaType !== 'book') continue;
+      if (libraryIds.length && !libraryIds.includes(String(library.id))) continue;
       let page = 1;
       while (page <= 200) {
         const data = await this.request<{ results: Json[]; total: number }>(

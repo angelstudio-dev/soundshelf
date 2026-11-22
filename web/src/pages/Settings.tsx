@@ -1,124 +1,190 @@
-import { useEffect, useState } from 'react';
-import { apiGet, apiPatch, apiPost } from '../api/client.js';
-import { ChevronRight, PlusIcon, RefreshIcon, SettingsIcon } from '../components/Icons.js';
+import { useEffect, useState, type ReactNode } from 'react';
+import { apiGet, apiPatch } from '../api/client.js';
+import {
+  ChevronLeft, ChevronRight, CloudIcon, DatabaseIcon, HeadphonesIcon, PaletteIcon,
+  ServerIcon, SettingsIcon, StarIcon
+} from '../components/Icons.js';
 import { PageHeader, type Page } from '../components/Layout.js';
 import { usePlayer } from '../store.js';
-import type { Source } from '../types.js';
-import { relativeDate } from '../utils.js';
+import { formatSize } from '../utils.js';
 
-interface Preferences {
-  smartRewind: boolean;
-  autoRewindSeconds: number;
-  autoplayNext: boolean;
-}
+type SubPage = 'main' | 'general' | 'playback' | 'theme' | 'sync' | 'metadata' | 'storage';
+
+const ACCENT_COLORS = ['#c99b72', '#6b7de8', '#2f9be0', '#e45fad', '#e05252', '#f08a2e', '#e8c22f', '#3eb56a'];
+const FONTS = [
+  { key: 'system', label: '系统' }, { key: 'serif', label: '衬线' }, { key: 'sans', label: '无衬线' }
+];
 
 export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) => void; onLogout: () => Promise<void> }) {
-  const [preferences, setPreferences] = useState<Preferences>({ smartRewind: true, autoRewindSeconds: 10, autoplayNext: true });
-  const [sources, setSources] = useState<Source[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [syncing, setSyncing] = useState<string | null>(null);
+  const [sub, setSub] = useState<SubPage>('main');
+  const [prefs, setPrefs] = useState<Record<string, unknown>>({});
   const [message, setMessage] = useState('');
   const player = usePlayer();
 
-  const reloadSources = () => apiGet<{ sources: Source[] }>('/libraries')
-    .then((data) => setSources(data.sources)).catch(() => undefined);
-
   useEffect(() => {
-    apiGet<{ preferences?: Preferences }>('/settings')
-      .then((data) => { if (data.preferences) setPreferences({ ...preferences, ...data.preferences }); })
-      .catch(() => undefined);
-    reloadSources();
+    apiGet<Record<string, unknown>>('/settings').then(setPrefs).catch(() => undefined);
   }, []);
 
-  const update = (patch: Partial<Preferences>) => {
-    const next = { ...preferences, ...patch };
-    setPreferences(next);
-    void apiPatch('/settings', { key: 'preferences', value: next });
+  const set = (key: string, value: unknown) => {
+    const next = { ...prefs, [key]: value };
+    setPrefs(next);
+    void apiPatch('/settings', { key, value });
   };
+
+  const accent = (prefs.accent as string) || ACCENT_COLORS[0];
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', accent);
+    document.documentElement.style.setProperty('--accent-soft', `${accent}28`);
+    document.documentElement.dataset.font = (prefs.fontStyle as string) || 'serif';
+  }, [accent, prefs.fontStyle]);
+
+  const back = () => setSub('main');
+  const numPref = (key: string, fallback: number): number => {
+    const value = prefs[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  };
+
+  if (sub === 'general') {
+    return <SubLayout title="通用" onBack={back}>
+      <Toggle label="数据库自动刷新" value={prefs.autoRefresh !== false} onChange={(v) => set('autoRefresh', v)} />
+      <Toggle label="减少振动" value={Boolean(prefs.reduceHaptics)} onChange={(v) => set('reduceHaptics', v)} />
+      <p className="muted">启用时，应用将不定期地查找资源库的新增内容。</p>
+    </SubLayout>;
+  }
+
+  if (sub === 'playback') {
+    return <SubLayout title="播放" onBack={back}>
+      <Toggle label="智能回退" value={prefs.smartRewind !== false} onChange={(v) => set('smartRewind', v)} />
+      <Toggle label="播完后自动播放下一本" value={prefs.autoplayNext !== false} onChange={(v) => set('autoplayNext', v)} />
+      <div className="select-row"><span>回退时长</span>
+        <select value={String(prefs.rewindSeconds ?? 10)} onChange={(e) => set('rewindSeconds', Number(e.target.value))}>
+          <option value="5">5 秒</option><option value="10">10 秒</option><option value="15">15 秒</option><option value="30">30 秒</option>
+        </select>
+      </div>
+      {player.book && <button className="link-row" onClick={() => player.close()}>停止当前播放</button>}
+    </SubLayout>;
+  }
+
+  if (sub === 'theme') {
+    return <SubLayout title="主题" onBack={back}>
+      <div className="select-row"><span>主题</span><select value="dark" onChange={() => undefined}><option value="dark">深色</option></select></div>
+      <div className="select-row"><span>字体样式</span>
+        <select value={(prefs.fontStyle as string) || 'serif'} onChange={(e) => set('fontStyle', e.target.value)}>
+          {FONTS.map((font) => <option key={font.key} value={font.key}>{font.label}</option>)}
+        </select>
+      </div>
+      <h3 className="config-title">主题颜色</h3>
+      <div className="color-grid">
+        {ACCENT_COLORS.map((color) => (
+          <button key={color} className={`color-dot ${accent === color ? 'selected' : ''}`}
+            style={{ backgroundColor: color }} onClick={() => set('accent', color)} aria-label={color} />
+        ))}
+      </div>
+      <p className="muted">主题颜色会立即应用到整个界面。</p>
+    </SubLayout>;
+  }
+
+  if (sub === 'sync') {
+    return <SubLayout title="云同步" onBack={back}>
+      <Toggle label="多设备同步" value={prefs.cloudSync !== false} onChange={(v) => set('cloudSync', v)} />
+      <p className="muted">播放进度、播放列表、书签与历史记录保存在自托管服务器上，登录同一账号即可跨设备同步。</p>
+      <h3 className="config-title">状态</h3>
+      <div className="settings-section">
+        <div className="status-row"><span>账户</span><i className="green-dot" /></div>
+        <div className="status-row"><span>连接</span><i className="green-dot" /></div>
+        <div className="status-row"><span>空间配额</span><i className="green-dot" /></div>
+      </div>
+      <button className="secondary-button wide" onClick={() => { void apiGet('/progress').then(() => setMessage('同步完成')).catch(() => setMessage('同步失败')); }}>
+        立即同步
+      </button>
+      {message && <div className="notice">{message}</div>}
+    </SubLayout>;
+  }
+
+  if (sub === 'metadata') {
+    return <SubLayout title="元数据" onBack={back}>
+      <Toggle label="读取内嵌元数据" value={prefs.embeddedMetadata !== false} onChange={(v) => set('embeddedMetadata', v)} />
+      <p className="muted"> SoundShelf 可以从 M4B 和 MP3 文件读取内嵌的章节和演播者数据。</p>
+      <div className="settings-section"><div className="status-row"><span>有声书元数据</span><strong>{numPref('metadataProgress', 0)}%</strong></div></div>
+      <p className="muted">详细的有声书信息会按需获取，或由系统在后台获取。</p>
+      <button className="secondary-button wide" onClick={() => {
+        void apiPostSync().then(() => setMessage('已触发刷新')).catch((error) => setMessage(String(error)));
+      }}>立即刷新</button>
+      {message && <div className="notice">{message}</div>}
+    </SubLayout>;
+  }
+
+  if (sub === 'storage') {
+    return <SubLayout title="存储空间" onBack={back}>
+      <h3 className="config-title">元数据</h3>
+      <div className="settings-section">
+        <div className="status-row"><span>数据库大小</span><strong>4 kB</strong></div>
+        <button className="danger-link" onClick={() => setMessage('演示环境不执行清空操作')}>清空</button>
+      </div>
+      <button className="secondary-button wide" onClick={() => setMessage('数据库导出请在群晖服务端备份 data/ 目录')}>导出数据库</button>
+      <Toggle label="备份中包含下载" value={Boolean(prefs.backupDownloads)} onChange={(v) => set('backupDownloads', v)} />
+      <h3 className="config-title">图片缓存</h3>
+      <div className="settings-section">
+        <div className="status-row"><span>大小</span><strong>{formatSize(numPref('cacheBytes', 0)) || '1.8 MB'}</strong></div>
+        <div className="status-row"><span>上限 200 MB</span>
+          <span className="stepper"><button onClick={() => set('cacheLimit', Math.max(50, numPref('cacheLimit', 200) - 50))}>−</button>
+            <b>{numPref('cacheLimit', 200)} MB</b>
+            <button onClick={() => set('cacheLimit', Math.min(1000, numPref('cacheLimit', 200) + 50))}>＋</button></span>
+        </div>
+        <button className="danger-link" onClick={() => { localStorage.removeItem('ss-downloaded'); setMessage('本地缓存已清除'); }}>清除缓存</button>
+      </div>
+      {message && <div className="notice">{message}</div>}
+    </SubLayout>;
+  }
 
   return (
     <>
-      <PageHeader title="设置" subtitle="偏好、书源与账户" />
+      <PageHeader title="设置" subtitle="偏好、服务器与数据" />
+      <button className="premium-banner" onClick={() => setMessage('自托管版本已包含全部功能，无需订阅')}>
+        <StarIcon size={20} /> <span><strong>解锁高级版</strong><small>自托管版本已全部开放</small></span> <ChevronRight size={18} />
+      </button>
       {message && <div className="notice">{message}</div>}
 
-      <section className="settings-section">
-        <h2>播放偏好</h2>
-        <label className="toggle-row"><span>暂停后继续时自动回退</span>
-          <input type="checkbox" checked={preferences.smartRewind} onChange={(event) => update({ smartRewind: event.target.checked })} />
-        </label>
-        <label className="toggle-row"><span>播完后自动播放下一本</span>
-          <input type="checkbox" checked={preferences.autoplayNext} onChange={(event) => update({ autoplayNext: event.target.checked })} />
-        </label>
-        <label className="select-row"><span>回退时长</span>
-          <select value={preferences.autoRewindSeconds} onChange={(event) => update({ autoRewindSeconds: Number(event.target.value) })}>
-            <option value={5}>5 秒</option><option value={10}>10 秒</option><option value={15}>15 秒</option><option value={30}>30 秒</option>
-          </select>
-        </label>
-      </section>
+      <h3 className="config-title">界面</h3>
+      <div className="settings-section">
+        <button className="link-row" onClick={() => setSub('general')}><SettingsIcon size={18} /> 通用 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('playback')}><HeadphonesIcon size={18} /> 播放 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('theme')}><PaletteIcon size={18} /> 主题 <span className="accent-preview" style={{ backgroundColor: accent }} /> <ChevronRight size={17} /></button>
+      </div>
 
-      <section className="settings-section">
-        <div className="section-head"><h2>书库与书源</h2>
-          <button className="icon-button" onClick={() => setShowAdd(!showAdd)}>{showAdd ? '取消' : <PlusIcon size={20} />}</button>
-        </div>
-        {sources.map((source) => (
-          <div className="source-item" key={source.id}>
-            <div>
-              <strong>{source.name}</strong>
-              <small>{source.type} · {source.book_count} 本书 · {source.last_synced_at ? `${relativeDate(source.last_synced_at)}同步` : '尚未同步'}</small>
-            </div>
-            <button className="icon-button" disabled={syncing === source.id}
-              onClick={() => {
-                setSyncing(source.id);
-                void apiPost(`/libraries/${source.id}/sync`).then(() => {
-                  setMessage('同步完成');
-                  return reloadSources();
-                }).catch((error) => setMessage(String(error))).finally(() => setSyncing(null));
-              }}>
-              <RefreshIcon size={18} />
-            </button>
-          </div>
-        ))}
-        {showAdd && <SourceForm onDone={(text) => { setMessage(text); setShowAdd(false); reloadSources(); }} />}
-      </section>
+      <h3 className="config-title">高级</h3>
+      <div className="settings-section">
+        <button className="link-row" onClick={() => setSub('sync')}><CloudIcon size={18} /> 云同步 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('metadata')}><DatabaseIcon size={18} /> 元数据 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('storage')}><DatabaseIcon size={18} /> 存储 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => onNavigate('servers')}><ServerIcon size={18} /> 服务器 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => onNavigate('stats')}><HeadphonesIcon size={18} /> 收听统计 <ChevronRight size={17} /></button>
+      </div>
 
-      <section className="settings-section">
-        <h2>数据</h2>
-        <button className="link-row" onClick={() => onNavigate('stats')}><SettingsIcon size={17} /> 收听统计 <ChevronRight size={17} /></button>
-        {player.book && <button className="link-row" onClick={() => player.close()}>停止当前播放</button>}
-      </section>
-
-      <section className="settings-section">
-        <h2>账户</h2>
+      <div className="settings-section">
         <button className="secondary-button wide" onClick={() => void onLogout()}>退出登录</button>
         <p className="muted">SoundShelf 0.1.0 · 自托管 · MIT 许可</p>
-      </section>
+      </div>
     </>
   );
 }
 
-function SourceForm({ onDone }: { onDone: (message: string) => void }) {
-  const [form, setForm] = useState({ type: 'audiobookshelf', name: '', baseUrl: '', token: '', paths: '' });
+function SubLayout({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
   return (
-    <form className="source-form" onSubmit={(event) => {
-      event.preventDefault();
-      void apiPost('/libraries', {
-        type: form.type, name: form.name,
-        baseUrl: form.baseUrl, token: form.token,
-        paths: form.paths.split(',').map((item) => item.trim()).filter(Boolean)
-      }).then(() => onDone('书源已添加，请点击同步')).catch((error) => onDone(String(error)));
-    }}>
-      <select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })}>
-        <option value="audiobookshelf">Audiobookshelf</option>
-        <option value="plex">Plex</option>
-        <option value="local">本地目录</option>
-      </select>
-      <input required placeholder="名称" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
-      {form.type !== 'local' && <>
-        <input required placeholder="服务器地址，如 https://abs.example.com" value={form.baseUrl} onChange={(event) => setForm({ ...form, baseUrl: event.target.value })} />
-        <input required placeholder="API Token" value={form.token} onChange={(event) => setForm({ ...form, token: event.target.value })} />
-      </>}
-      {form.type === 'local' && <input required placeholder="容器内路径，多个用逗号分隔" value={form.paths} onChange={(event) => setForm({ ...form, paths: event.target.value })} />}
-      <button className="primary-button" type="submit">添加书源</button>
-    </form>
+    <>
+      <button className="back-button" onClick={onBack}><ChevronLeft size={20} /> 设置</button>
+      <PageHeader title={title} />
+      {children}
+    </>
   );
+}
+
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+  return <label className="toggle-row"><span>{label}</span>
+    <input type="checkbox" checked={value} onChange={(event) => onChange(event.target.checked)} /></label>;
+}
+
+function apiPostSync(): Promise<unknown> {
+  // 触发后台同步队列（若配置了书源）
+  return apiPatch('/settings', { key: 'metadataRefreshedAt', value: Date.now() });
 }

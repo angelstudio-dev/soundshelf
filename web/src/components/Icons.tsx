@@ -43,3 +43,14 @@ export const BookOpenIcon = (p: IconProps) => <Icon {...p}><path d="M12 6c-2-2-5
 export const VolumeIcon = (p: IconProps) => <Icon {...p}><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M17 8a6 6 0 0 1 0 8" /></Icon>;
 export const EqualizerIcon = (p: IconProps) => <Icon {...p}><path d="M5 20V10M12 20V4M19 20v-8" /></Icon>;
 export const RefreshIcon = (p: IconProps) => <Icon {...p}><path d="M20 7v5h-5" /><path d="M4 17v-5h5" /><path d="M5.5 9A7 7 0 0 1 18 7l2 5M18.5 15A7 7 0 0 1 6 17l-2-5" /></Icon>;
+export const AuthorIcon = (p: IconProps) => <Icon {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></Icon>;
+export const ServerIcon = (p: IconProps) => <Icon {...p}><rect x="3" y="4" width="18" height="6" rx="2" /><rect x="3" y="14" width="18" height="6" rx="2" /><path d="M7 7h.01M7 17h.01" /></Icon>;
+export const CloudIcon = (p: IconProps) => <Icon {...p}><path d="M6 18a4 4 0 0 1-.5-8A6 6 0 0 1 17 9a4.5 4.5 0 0 1 .5 9H6Z" /></Icon>;
+export const PaletteIcon = (p: IconProps) => <Icon {...p}><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.5-.8 1.5-1.5 0-.8-.6-1.3-.6-2 0-.8.7-1.5 1.6-1.5H17a4 4 0 0 0 4-4A9 9 0 0 0 12 3Z" /><circle cx="7.5" cy="11" r=".8" fill="currentColor" /><circle cx="10" cy="7" r=".8" fill="currentColor" /><circle cx="15" cy="7.5" r=".8" fill="currentColor" /></Icon>;
+export const DatabaseIcon = (p: IconProps) => <Icon {...p}><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></Icon>;
+export const SortIcon = (p: IconProps) => <Icon {...p}><path d="M4 6h16M6 12h12M9 18h6" /></Icon>;
+export const UploadIcon = (p: IconProps) => <Icon {...p}><path d="M12 16V4m0 0L7 9m5-5 5 5" /><path d="M4 17v4h16v-4" /></Icon>;
+export const LockIcon = (p: IconProps) => <Icon {...p}><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></Icon>;
+export const StarIcon = (p: IconProps) => <Icon {...p}><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" /></Icon>;
+export const ExportIcon = (p: IconProps) => <Icon {...p}><path d="M12 4v11m0 0 4-4m-4 4-4-4" /><path d="M5 17v3h14v-3" /></Icon>;
+export const WifiIcon = (p: IconProps) => <Icon {...p}><path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0" /><circle cx="12" cy="20" r="1" fill="currentColor" /></Icon>;

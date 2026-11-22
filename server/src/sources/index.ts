@@ -34,9 +34,13 @@ export function adapterFor(source: SourceRow): SourceAdapter {
 
 export function createSource(input: {
   type: SourceType; name: string; baseUrl?: string; token?: string; paths?: string[]; enabled?: boolean;
+  libraryIds?: string[];
 }): SourceRow {
   const id = randomUUID();
-  const extra = input.type === 'local' ? JSON.stringify({ paths: input.paths ?? [] }) : '{}';
+  const extraObj: Record<string, unknown> = {};
+  if (input.type === 'local') extraObj.paths = input.paths ?? [];
+  if (input.libraryIds?.length) extraObj.libraryIds = input.libraryIds;
+  const extra = JSON.stringify(extraObj);
   db.prepare(`INSERT INTO sources (id, type, name, base_url, token, extra, enabled, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
     id, input.type, input.name, input.baseUrl ?? '', input.token ?? '', extra,

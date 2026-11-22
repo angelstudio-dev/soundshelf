@@ -2,10 +2,10 @@ import type { ReactNode } from 'react';
 import { usePlayer } from '../store.js';
 import { formatTime } from '../utils.js';
 import {
-  BooksIcon, CollectionIcon, HeadphonesIcon, HomeIcon, PauseIcon, PlayIcon, SearchIcon, SettingsIcon
+  AuthorIcon, BooksIcon, CollectionIcon, HeadphonesIcon, HomeIcon, PauseIcon, PlayIcon, SettingsIcon
 } from './Icons.js';
 
-export type Page = 'home' | 'books' | 'collections' | 'search' | 'settings' | 'stats' | 'book';
+export type Page = 'home' | 'books' | 'authors' | 'collections' | 'settings' | 'stats' | 'book' | 'author' | 'servers' | 'playlist';
 
 interface Props {
   page: Page;
@@ -15,10 +15,10 @@ interface Props {
 }
 
 const tabs: { key: Page; label: string; icon: typeof HomeIcon }[] = [
-  { key: 'home', label: '首页', icon: HomeIcon },
-  { key: 'books', label: '书籍', icon: BooksIcon },
-  { key: 'collections', label: '合集', icon: CollectionIcon },
-  { key: 'search', label: '搜索', icon: SearchIcon },
+  { key: 'home', label: '主页', icon: HomeIcon },
+  { key: 'books', label: '书架', icon: BooksIcon },
+  { key: 'authors', label: '作者', icon: AuthorIcon },
+  { key: 'collections', label: '收藏集', icon: CollectionIcon },
   { key: 'settings', label: '设置', icon: SettingsIcon }
 ];
 

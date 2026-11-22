@@ -1,0 +1,4 @@
+.chip { margin-bottom: 12rpx; }
+.collection-block { margin-bottom: 32rpx; }
+.cover-row { white-space: nowrap; margin-top: 12rpx; }
+.cover-item { display: inline-block; margin-right: 16rpx; }

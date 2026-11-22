@@ -30,6 +30,11 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | GET | `/search?q=` | 搜索 |
 | GET | `/books/:id/stream?track=` | 音频流，支持 Range 请求 |
 | GET | `/assets/cover/:bookId` | 封面代理（自动附加书源凭据） |
+| GET | `/authors` | 作者聚合列表（首字母、书籍数、封面） |
+| GET | `/authors/:name/books` | 指定作者的书籍 |
+| GET | `/books/:id/history` | 单本收听历史 |
+| GET | `/history?limit=` | 全部收听历史 |
+| GET | `/books/:id/media` | 文件大小与码率 |
 
 ## 书源
 
@@ -40,6 +45,9 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | PATCH | `/libraries/:id` | 启用/禁用、重命名 |
 | DELETE | `/libraries/:id` | 删除书源 |
 | POST | `/libraries/:id/sync` | 立即同步 |
+| POST | `/libraries/probe` | 探测资料库列表（添加向导用），body: `{type, baseUrl, token}` |
+
+`POST /libraries` 支持可选 `libraryIds: string[]`，只同步勾选的资料库；`SKIP_STARTUP_SYNC=true` 可跳过启动时的自动同步。
 
 ## 个人数据
 
@@ -52,6 +60,7 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | PATCH/DELETE | `/bookmarks/:id` | 更新 / 删除 |
 | GET | `/stats` | 收听统计、连续天数、最近 30 天 |
 | GET/PATCH/DELETE | `/settings` / `/settings/:key` | 用户设置 |
+| GET/POST | `/playlists` | 播放清单（添加到清单） |
 
 ## 转录与任务
 

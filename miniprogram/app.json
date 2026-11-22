@@ -2,6 +2,9 @@
   "pages": [
     "pages/home/home",
     "pages/books/books",
+    "pages/authors/authors",
+    "pages/collections/collections",
+    "pages/author/author",
     "pages/book/book",
     "pages/player/player",
     "pages/settings/settings"
@@ -19,8 +22,10 @@
     "backgroundColor": "#1b1b1d",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/home/home", "text": "首页" },
-      { "pagePath": "pages/books/books", "text": "书籍" },
+      { "pagePath": "pages/home/home", "text": "主页" },
+      { "pagePath": "pages/books/books", "text": "书架" },
+      { "pagePath": "pages/authors/authors", "text": "作者" },
+      { "pagePath": "pages/collections/collections", "text": "收藏集" },
       { "pagePath": "pages/settings/settings", "text": "设置" }
     ]
   },

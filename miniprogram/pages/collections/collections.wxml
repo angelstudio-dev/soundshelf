@@ -1,0 +1,15 @@
+<view class="page">
+  <view class="muted">SOUNDSHELF</view>
+  <view class="h1">收藏集</view>
+  <view wx:for="{{collections}}" wx:key="id" class="collection-block">
+    <view class="title" style="font-size:30rpx;margin:24rpx 0 12rpx">{{item.title}}</view>
+    <view class="muted" style="font-size:22rpx">{{item.books.length}} 本书</view>
+    <scroll-view scroll-x class="cover-row">
+      <view wx:for="{{item.books}}" wx:for-item="book" wx:key="id" class="cover-item" bindtap="toBook" data-id="{{book.id}}">
+        <image src="{{book.coverUrl}}" mode="aspectFill" style="width:150rpx;height:220rpx;border-radius:10rpx" />
+        <view class="muted" style="font-size:20rpx;width:150rpx;overflow:hidden;white-space:nowrap">{{book.title}}</view>
+      </view>
+    </scroll-view>
+  </view>
+  <view wx:if="{{!collections.length}}" class="empty">还没有收藏集</view>
+</view>

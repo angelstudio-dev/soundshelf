@@ -15,6 +15,7 @@ const envSchema = z.object({
   ADMIN_USERNAME: z.string().min(1).default('admin'),
   ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD 至少需要 8 个字符'),
   DEMO_MODE: z.enum(['true', 'false']).default('false'),
+  SKIP_STARTUP_SYNC: z.enum(['true', 'false']).default('false'),
   ABS_BASE_URL: z.string().default(''),
   ABS_TOKEN: z.string().default(''),
   PLEX_BASE_URL: z.string().default(''),
@@ -38,6 +39,7 @@ export const config = {
   ...parsed.data,
   isProd: parsed.data.NODE_ENV === 'production',
   demoMode: parsed.data.DEMO_MODE === 'true',
+  skipStartupSync: parsed.data.SKIP_STARTUP_SYNC === 'true',
   corsOrigins: parsed.data.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
   localLibraryPaths: parsed.data.LOCAL_LIBRARY_PATHS.split(',')
     .map((s) => s.trim()).filter(Boolean)

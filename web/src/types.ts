@@ -67,6 +67,37 @@ export interface Bookmark {
   updatedAt: number;
 }
 
+export interface Author {
+  name: string;
+  initial: string;
+  bookCount: number;
+  coverUrl: string;
+  totalDuration: number;
+}
+
+export interface ListeningEvent {
+  id: string;
+  bookId: string;
+  bookTitle: string;
+  coverUrl: string;
+  startedAt: number;
+  seconds: number;
+  kind: 'session' | 'added';
+  position: number;
+}
+
+export interface SourceLibrary {
+  key: string;
+  title: string;
+  type: string;
+  count?: number;
+}
+
+export interface MediaInfo {
+  size: number;
+  bitrate: number;
+}
+
 export interface Stats {
   totalSeconds: number;
   weekSeconds: number;

@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
 import { upstreamError } from '../errors.js';
-import type { RawBook, RawChapter, RawCollection, RawTrack, SourceAdapter, SourceRow } from './types.js';
+import type { RawBook, RawChapter, RawCollection, RawTrack, SourceAdapter, SourceLibrary, SourceRow } from './types.js';
 
 type XmlNode = Record<string, any>;
 
@@ -71,9 +71,22 @@ export class PlexAdapter implements SourceAdapter {
     return all;
   }
 
+  async listLibraries(): Promise<SourceLibrary[]> {
+    const container = this.requestXmlSafe(await this.requestXml('/library/sections'));
+    return asArray<XmlNode>(container.Directory).map((section) => ({
+      key: str(section['@_key']),
+      title: str(section['@_title']),
+      type: str(section['@_type']),
+      count: num(section['@_count'])
+    }));
+  }
+
   async listBooks(): Promise<RawBook[]> {
     const sections = asArray<XmlNode>(this.requestXmlSafe(await this.requestXml('/library/sections')).Directory);
-    const musicSections = sections.filter((section) => str(section['@_type']) === 'artist');
+    let libraryIds: string[] = [];
+    try { libraryIds = JSON.parse(this.source.extra || '{}').libraryIds ?? []; } catch { /* ignore */ }
+    const musicSections = sections.filter((section) =>
+      str(section['@_type']) === 'artist' && (!libraryIds.length || libraryIds.includes(str(section['@_key']))));
     const result: RawBook[] = [];
 
     for (const section of musicSections) {

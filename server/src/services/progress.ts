@@ -101,3 +101,12 @@ export function listSettings(userId: string): Record<string, unknown> {
 export function deleteSetting(userId: string, key: string): void {
   db.prepare('DELETE FROM settings WHERE user_id = ? AND key = ?').run(userId, key);
 }
+
+/** 按 key 前缀列出所有设置值 */
+export function listSettingValues(userId: string, prefix: string): unknown[] {
+  const rows = db.prepare('SELECT key, value FROM settings WHERE user_id = ? AND key LIKE ?')
+    .all(userId, `${prefix}%`) as { key: string; value: string }[];
+  return rows.map((row) => {
+    try { return JSON.parse(row.value); } catch { return row.value; }
+  });
+}

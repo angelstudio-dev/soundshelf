@@ -8,13 +8,16 @@ import { config } from './config.js';
 import { db } from './db.js';
 import { badRequest, notFound, unauthorized } from './errors.js';
 import { logger } from './logger.js';
-import { createSource, deleteSource, listSources, setSourceEnabled, syncSource } from './sources/index.js';
+import { createSource, deleteSource, getSource, listSources, setSourceEnabled, syncSource, adapterFor } from './sources/index.js';
+import {
+  booksByAuthor, getAllHistory, getHistory, getMediaInfo, listAuthors
+} from './services/discovery.js';
 import {
   coverAuthHeaders, coverTarget, getBook, getCollection, getContinueListening, getFinished,
   getRecentlyAdded, listBooks, listCollections, resolveStreamTarget, searchBooks
 } from './services/library.js';
 import {
-  deleteSetting, listProgress, listSettings, markFinished, resetProgress, saveProgress, setSetting
+  deleteSetting, getSetting, listProgress, listSettingValues, listSettings, markFinished, resetProgress, saveProgress, setSetting
 } from './services/progress.js';
 import { createBookmark, deleteBookmark, listBookmarks, updateBookmark } from './services/bookmarks.js';
 import { getStats } from './services/stats.js';
@@ -107,6 +110,7 @@ api.post('/libraries', requireAuth, (req, res) => {
     baseUrl: z.string().default(''),
     token: z.string().default(''),
     paths: z.array(z.string()).optional(),
+    libraryIds: z.array(z.string()).optional(),
     enabled: z.boolean().optional()
   }), req.body);
   res.status(201).json({ source: createSource(input) });
@@ -127,6 +131,22 @@ api.delete('/libraries/:id', requireAuth, (req, res) => {
 api.post('/libraries/:id/sync', requireAuth, asyncRoute(async (req, res) => {
   const result = await syncSource(req.params.id);
   res.json(result);
+}));
+
+// 探测书源的资料库列表，用于添加向导中的「选择一个或多个库」
+api.post('/libraries/probe', requireAuth, asyncRoute(async (req, res) => {
+  const input = body(z.object({
+    type: z.enum(['plex', 'audiobookshelf']),
+    baseUrl: z.string().url(),
+    token: z.string().min(1)
+  }), req.body);
+  const adapter = adapterFor({
+    id: 'probe', type: input.type, name: 'probe', base_url: input.baseUrl,
+    token: input.token, extra: '{}', enabled: 1
+  });
+  if (!adapter.listLibraries) throw badRequest('该书源不支持资料库探测');
+  const libraries = await adapter.listLibraries();
+  res.json({ libraries });
 }));
 
 // ---------- 书库 ----------
@@ -163,6 +183,38 @@ api.get('/search', requireAuth, (req, res) => {
 
 api.get('/collections', requireAuth, (req, res) => res.json({ collections: listCollections(userId(req)) }));
 api.get('/collections/:id', requireAuth, (req, res) => res.json(getCollection(req.params.id, userId(req))));
+
+// ---------- 作者与历史 ----------
+api.get('/authors', requireAuth, (_req, res) => res.json({ authors: listAuthors() }));
+api.get('/authors/:name/books', requireAuth, (req, res) => {
+  res.json({ books: booksByAuthor(req.params.name, userId(req)) });
+});
+api.get('/history', requireAuth, (req, res) => {
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+  res.json({ events: getAllHistory(userId(req), limit) });
+});
+api.get('/books/:id/history', requireAuth, (req, res) => {
+  res.json({ events: getHistory(userId(req), req.params.id) });
+});
+api.get('/books/:id/media', requireAuth, (req, res) => res.json(getMediaInfo(req.params.id)));
+
+// 播放清单：以 settings 的 playlist 键保存，避免额外表结构
+api.get('/playlists', requireAuth, (req, res) => {
+  res.json({ playlists: listSettingValues(userId(req), 'playlist:') });
+});
+api.post('/playlists', requireAuth, (req, res) => {
+  const input = body(z.object({ name: z.string().default('播放清单'), bookId: z.string().min(1) }), req.body);
+  const uid = userId(req);
+  const existing = getSetting<{ name: string; bookIds: string[] }[]>(uid, 'playlists', []);
+  let playlist = existing.find((item) => item.name === input.name);
+  if (!playlist) {
+    playlist = { name: input.name, bookIds: [] };
+    existing.push(playlist);
+  }
+  if (!playlist.bookIds.includes(input.bookId)) playlist.bookIds.push(input.bookId);
+  setSetting(uid, 'playlists', existing);
+  res.status(201).json({ playlist });
+});
 
 // ---------- 音频与封面代理 ----------
 function parseRange(header: string | undefined, size: number): { start: number; end: number } | null {

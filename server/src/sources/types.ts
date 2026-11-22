@@ -53,9 +53,17 @@ export interface RawCollection {
   bookExternalIds: string[];
 }
 
+export interface SourceLibrary {
+  key: string;
+  title: string;
+  type: string;
+  count?: number;
+}
+
 export interface SourceAdapter {
   readonly type: SourceType;
   listBooks(): Promise<RawBook[]>;
+  listLibraries?(): Promise<SourceLibrary[]>;
   listCollections?(): Promise<RawCollection[]>;
   syncProgress?(externalId: string, position: number, duration: number, finished: boolean): Promise<void>;
   resolveTrack?(externalId: string, trackExternalId: string): Promise<{ url?: string; filePath?: string; headers?: Record<string, string> } | null>;

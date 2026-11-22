@@ -17,7 +17,7 @@ interface ProgressRow {
 
 const SELECT_BOOKS = `SELECT b.*, s.type AS source_type FROM books b JOIN sources s ON s.id = b.source_id`;
 
-function mapBooks(rows: BookRow[], userId: string | undefined): Book[] {
+export function mapBooks(rows: BookRow[], userId: string | undefined): Book[] {
   if (!rows.length) return [];
   const ids = rows.map((row) => row.id);
   const placeholders = ids.map(() => '?').join(',');
