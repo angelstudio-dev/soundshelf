@@ -2,8 +2,8 @@ FROM node:22-alpine AS builder
 WORKDIR /build
 COPY server/package*.json ./server/
 COPY web/package*.json ./web/
-RUN npm --prefix server ci --omit=dev || npm --prefix server install
-RUN npm --prefix web ci || npm --prefix web install
+RUN npm --prefix server ci
+RUN npm --prefix web ci
 COPY server ./server
 COPY web ./web
 RUN npm --prefix server run build && npm --prefix web run build

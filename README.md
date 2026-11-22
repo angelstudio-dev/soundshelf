@@ -61,6 +61,18 @@ docs/          部署、API、能力对照
 
 主要端点见 `docs/API.md`。所有 `/api/*`（除登录与健康检查）需要 Bearer 令牌；音频与封面额外允许 15 分钟有效的查询参数令牌供 `<audio>` 和小程序使用。
 
+## 推送到 GitHub
+
+本地仓库已初始化并完成首个提交。当前环境未安装 `gh` CLI，因此没有创建远端仓库；在你能访问 GitHub 的机器上执行：
+
+```bash
+git remote add origin https://github.com/<你的账号>/soundshelf.git
+git branch -M main
+git push -u origin main
+```
+
+推送后 GitHub Actions 会自动执行前后端编译检查。
+
 ## 许可
 
 MIT。详见 `LICENSE`。
