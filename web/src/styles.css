@@ -326,9 +326,13 @@ section { margin-bottom: 26px; }
 .oauth-card { text-align: center; padding: 22px 18px; }
 .oauth-card p { margin: 10px 0; }
 .oauth-card a.primary-button { text-decoration: none; }
-.pin-code { font-size: 34px; font-weight: 600; letter-spacing: .18em; color: var(--accent);
-  background: var(--surface-2); border: 1px dashed var(--border); border-radius: 12px;
-  padding: 16px 10px; margin: 16px 0 8px; user-select: all; }
+.pin-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(17px, 4vw, 24px); font-weight: 600; letter-spacing: .04em;
+  line-height: 1.35; overflow-wrap: anywhere; word-break: break-all; white-space: normal;
+  color: var(--accent); background: var(--surface-2); border: 1px dashed var(--border);
+  border-radius: 12px; padding: 16px 12px; margin: 16px 0 10px; user-select: all; max-width: 100%; }
+.oauth-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.oauth-actions .secondary-button { flex: 1 1 140px; }
 
 [data-font="system"] { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 [data-font="serif"] { font-family: Georgia, "Songti SC", "Noto Serif SC", serif; }

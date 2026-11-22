@@ -23,6 +23,7 @@ export function Servers({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [copyHint, setCopyHint] = useState('');
 
   const reload = () => apiGet<{ sources: Source[] }>('/libraries')
     .then((data) => setSources(data.sources)).catch(() => undefined);
@@ -66,7 +67,7 @@ export function Servers({ onBack }: { onBack: () => void }) {
 
   const startOAuth = async () => {
     setType('plex'); setName('Plex'); setAuthOrigin('oauth');
-    setSession(null); setServers([]); setToken(''); setBaseUrl('');
+    setSession(null); setServers([]); setToken(''); setBaseUrl(''); setCopyHint('');
     setStep('oauth'); setMessage('正在获取 Plex 登录码…');
     try {
       const data = await apiPost<PlexOAuthSession>('/plex/oauth/start');
@@ -103,6 +104,16 @@ export function Servers({ onBack }: { onBack: () => void }) {
   const probeSelectedServer = async () => {
     const url = manualServerUrl.trim() || selectedServer;
     await probeLibraries(url, token);
+  };
+
+  const copyText = async (text: string, hint: string) => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(text);
+      setCopyHint(hint);
+    } catch {
+      setCopyHint('复制失败，请手动选中文本');
+    }
   };
 
   const save = async () => {
@@ -193,6 +204,15 @@ export function Servers({ onBack }: { onBack: () => void }) {
               </a>
               <p className="muted">或访问 <a href={session.linkUrl} target="_blank" rel="noreferrer">plex.tv/link</a> 并输入下方验证码：</p>
               <div className="pin-code">{session.code}</div>
+              <div className="oauth-actions">
+                <button className="secondary-button" onClick={() => void copyText(session.code, '验证码已复制')}>
+                  复制验证码
+                </button>
+                <button className="secondary-button" onClick={() => void copyText(session.authUrl, '授权链接已复制')}>
+                  复制授权链接
+                </button>
+              </div>
+              {copyHint && <p className="muted">{copyHint}</p>}
               <p className="muted">授权码 30 分钟内有效；完成授权后此页面会自动进入下一步。</p>
             </>
           ) : (
