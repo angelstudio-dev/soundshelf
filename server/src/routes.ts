@@ -22,6 +22,7 @@ import {
 import { createBookmark, deleteBookmark, listBookmarks, updateBookmark } from './services/bookmarks.js';
 import { getStats } from './services/stats.js';
 import { getTranscript, requestTranscript } from './services/transcript.js';
+import { checkPlexPin, createPlexPin } from './services/plex-oauth.js';
 import type { AuthRequest } from './types.js';
 
 export const api = Router();
@@ -44,6 +45,11 @@ const userId = (req: Request): string => {
   const id = (req as AuthRequest).userId;
   if (!id) throw unauthorized();
   return id;
+};
+
+const requireAdmin = (req: Request): void => {
+  const actor = db.prepare('SELECT role FROM users WHERE id = ?').get(userId(req)) as { role: string } | undefined;
+  if (actor?.role !== 'admin') throw unauthorized('仅管理员可以执行此操作');
 };
 
 // ---------- 认证 ----------
@@ -97,6 +103,19 @@ api.post('/auth/register', requireAuth, (req, res) => {
     .run(id, input.username, hashPassword(input.password), input.role, new Date().toISOString());
   res.status(201).json({ user: { id, username: input.username, role: input.role } });
 });
+
+// ---------- Plex 账户登录（PIN 授权） ----------
+api.post('/plex/oauth/start', requireAuth, asyncRoute(async (req, res) => {
+  requireAdmin(req);
+  res.json(await createPlexPin(userId(req)));
+}));
+
+api.get('/plex/oauth/check', requireAuth, asyncRoute(async (req, res) => {
+  requireAdmin(req);
+  const pinId = String(req.query.pinId ?? '');
+  if (!pinId) throw badRequest('缺少 pinId');
+  res.json(await checkPlexPin(pinId, userId(req)));
+}));
 
 // ---------- 书源 ----------
 api.get('/libraries', requireAuth, (_req, res) => res.json({ sources: listSources() }));

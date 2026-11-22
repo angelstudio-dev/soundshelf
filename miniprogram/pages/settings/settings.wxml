@@ -31,6 +31,43 @@
     <button class="button secondary" style="margin-top:20rpx" bindtap="logout">退出登录</button>
   </view>
 
+  <view class="card" wx:if="{{loggedIn && plexStep === 'idle'}}">
+    <view class="h2">添加 Plex 服务器</view>
+    <view class="muted" style="margin:12rpx 0 20rpx">使用 Plex 账户登录，无需复制访问令牌。</view>
+    <button class="button" bindtap="startPlexLogin">Plex 账户登录</button>
+  </view>
+
+  <view class="card" wx:if="{{loggedIn && plexStep === 'pin' && plexSession}}">
+    <view class="h2">Plex 账户登录</view>
+    <view class="muted" style="margin:16rpx 0">复制下方链接到浏览器打开并确认授权；也可访问 plex.tv/link 输入验证码。授权后会自动继续。</view>
+    <view class="pin-code">{{plexSession.code}}</view>
+    <button class="button" bindtap="copyAuthUrl">复制授权链接</button>
+    <button class="button secondary" style="margin-top:16rpx" bindtap="checkPlexPin">我已授权，检查</button>
+    <button class="button secondary" style="margin-top:16rpx" bindtap="cancelPlexLogin">取消</button>
+  </view>
+
+  <view class="card" wx:if="{{loggedIn && plexStep === 'servers'}}">
+    <view class="h2">选择 Plex 服务器</view>
+    <view class="server-row {{plexBaseUrl === item.baseUrl ? 'active' : ''}}"
+      wx:for="{{plexServers}}" wx:key="machineIdentifier" bindtap="selectPlexServer" data-url="{{item.baseUrl}}">
+      <view style="font-size:28rpx">{{item.name}}</view>
+      <view class="muted">{{item.baseUrl || '未发现可达地址'}} · {{item.owned ? '所有者' : '共享'}}</view>
+    </view>
+    <view class="muted" style="margin:16rpx 0 10rpx">自动发现失败时可手动填写服务器地址：</view>
+    <input class="input" placeholder="https://plex.example.com:32400" value="{{plexBaseUrl}}" bindinput="onPlexBaseUrl" />
+    <button class="button" bindtap="probePlexLibraries">读取资料库</button>
+  </view>
+
+  <view class="card" wx:if="{{loggedIn && plexStep === 'libraries'}}">
+    <view class="h2">选择资料库</view>
+    <view class="muted" style="margin:12rpx 0 16rpx">点击切换是否同步该资料库。</view>
+    <view class="server-row" wx:for="{{plexLibraries}}" wx:key="key" bindtap="togglePlexLibrary" data-key="{{item.key}}">
+      <view style="font-size:28rpx">{{item.title}}</view>
+      <view class="chip {{item.selected ? 'active' : ''}}">{{item.selected ? '已选' : '未选'}}</view>
+    </view>
+    <button class="button" style="margin-top:20rpx" bindtap="savePlexServer">保存服务器</button>
+  </view>
+
   <view wx:if="{{message}}" class="card accent">{{message}}</view>
   <view class="muted" style="text-align:center;margin-top:40rpx">小程序不支持 Apple Watch / CarPlay / 端侧转录</view>
 </view>

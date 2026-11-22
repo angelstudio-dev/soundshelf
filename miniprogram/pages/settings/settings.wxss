@@ -1,1 +1,5 @@
 .source { display:flex; align-items:center; justify-content:space-between; padding:22rpx 0; border-bottom:1rpx solid #302f2d; }
+.pin-code { font-size:56rpx; font-weight:600; letter-spacing:10rpx; color:#c99b72; text-align:center;
+  background:#242426; border:1rpx dashed #302f2d; border-radius:18rpx; padding:28rpx 16rpx; margin:18rpx 0 24rpx; }
+.server-row { display:flex; align-items:center; justify-content:space-between; padding:22rpx 0; border-bottom:1rpx solid #302f2d; }
+.server-row.active { color:#c99b72; }

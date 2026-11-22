@@ -121,6 +121,21 @@ const migrations = [
     value TEXT NOT NULL,
     PRIMARY KEY (user_id, key)
   )`,
+  `CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS plex_oauth_pins (
+    pin_id TEXT PRIMARY KEY,
+    code TEXT NOT NULL,
+    client_identifier TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'pending',
+    auth_token TEXT NOT NULL DEFAULT '',
+    servers TEXT NOT NULL DEFAULT '[]',
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
     type TEXT NOT NULL,

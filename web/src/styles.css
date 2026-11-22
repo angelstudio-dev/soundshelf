@@ -322,6 +322,13 @@ section { margin-bottom: 26px; }
 .mini-switch { width: 42px; height: 24px; border-radius: 14px; background: var(--surface-2); display: inline-flex;
   align-items: center; justify-content: flex-end; padding: 0 7px; color: #201810; }
 .mini-switch.on { background: var(--accent); }
+.library-row small { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; line-height: 1.4; }
+.oauth-card { text-align: center; padding: 22px 18px; }
+.oauth-card p { margin: 10px 0; }
+.oauth-card a.primary-button { text-decoration: none; }
+.pin-code { font-size: 34px; font-weight: 600; letter-spacing: .18em; color: var(--accent);
+  background: var(--surface-2); border: 1px dashed var(--border); border-radius: 12px;
+  padding: 16px 10px; margin: 16px 0 8px; user-select: all; }
 
 [data-font="system"] { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
 [data-font="serif"] { font-family: Georgia, "Songti SC", "Noto Serif SC", serif; }

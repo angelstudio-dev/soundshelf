@@ -25,9 +25,12 @@ CORS_ORIGINS=https://audio.example.com
 LOCAL_LIBRARY_PATHS=/media/books
 ABS_BASE_URL=https://abs.example.com
 ABS_TOKEN=<Audiobookshelf API Token>
+# Plex 可选：不填则可在 Web / 小程序中用 Plex 账户登录添加服务器
 PLEX_BASE_URL=https://plex.example.com
 PLEX_TOKEN=<X-Plex-Token>
 ```
+
+Plex 推荐在管理界面选择「Plex 媒体服务器 → 使用 Plex 账户登录」：按提示在 `app.plex.tv/auth` 页面确认后，SoundShelf 会自动获取账户下的服务器和资料库，无需手工查找令牌。上面的环境变量仅用于启动预置书源。
 
 ## 2. 启动
 

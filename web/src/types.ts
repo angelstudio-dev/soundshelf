@@ -93,6 +93,29 @@ export interface SourceLibrary {
   count?: number;
 }
 
+export interface PlexOAuthSession {
+  pinId: string;
+  code: string;
+  authUrl: string;
+  linkUrl: string;
+  expiresAt: number;
+  clientIdentifier: string;
+}
+
+export interface PlexServer {
+  name: string;
+  machineIdentifier: string;
+  version: string;
+  owned: boolean;
+  baseUrl: string;
+  reachable: boolean;
+  candidates: string[];
+}
+
+export type PlexOAuthStatus =
+  | { status: 'pending' | 'expired'; expiresAt: number }
+  | { status: 'complete'; token: string; servers: PlexServer[] };
+
 export interface MediaInfo {
   size: number;
   bitrate: number;

@@ -18,6 +18,17 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | GET | `/auth/me` | 当前用户 |
 | POST | `/auth/register` | 管理员创建用户 |
 
+## Plex 账户登录（PIN 授权）
+
+仅管理员可用。添加 Plex 服务器时无需手工复制 `X-Plex-Token`：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/plex/oauth/start` | 向 plex.tv 申请 PIN，返回 `pinId`、`code`、`authUrl`、`linkUrl`、`expiresAt` |
+| GET | `/plex/oauth/check?pinId=` | 轮询授权状态；`pending` / `expired` 或 `complete` + `token` + `servers` |
+
+流程：前端展示验证码并打开 `authUrl`（或让用户访问 `plex.tv/link` 输入验证码），每 3 秒轮询 `check`；授权成功后从 Plex 账户读取可访问的服务器列表，并自动探测本地/公网/relay 可用地址。返回的 `token`、`baseUrl` 可直接传给 `/libraries/probe` 与 `/libraries`。客户端标识保存在数据库 `app_meta` 中，同一部署保持稳定。
+
 ## 书库
 
 | 方法 | 路径 | 说明 |
