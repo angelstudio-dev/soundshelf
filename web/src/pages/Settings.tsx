@@ -6,6 +6,7 @@ import {
 } from '../components/Icons.js';
 import { PageHeader, type Page } from '../components/Layout.js';
 import { usePlayer } from '../store.js';
+import { applyPreferences, normalizeThemeMode, THEME_OPTIONS } from '../theme.js';
 import { formatSize } from '../utils.js';
 
 type SubPage = 'main' | 'general' | 'playback' | 'theme' | 'sync' | 'metadata' | 'storage';
@@ -22,21 +23,20 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
   const player = usePlayer();
 
   useEffect(() => {
-    apiGet<Record<string, unknown>>('/settings').then(setPrefs).catch(() => undefined);
+    apiGet<Record<string, unknown>>('/settings')
+      .then((loaded) => { setPrefs(loaded); applyPreferences(loaded); })
+      .catch(() => undefined);
   }, []);
 
   const set = (key: string, value: unknown) => {
     const next = { ...prefs, [key]: value };
     setPrefs(next);
+    applyPreferences(next);
     void apiPatch('/settings', { key, value });
   };
 
   const accent = (prefs.accent as string) || ACCENT_COLORS[0];
-  useEffect(() => {
-    document.documentElement.style.setProperty('--accent', accent);
-    document.documentElement.style.setProperty('--accent-soft', `${accent}28`);
-    document.documentElement.dataset.font = (prefs.fontStyle as string) || 'serif';
-  }, [accent, prefs.fontStyle]);
+  const themeMode = normalizeThemeMode(prefs.theme);
 
   const back = () => setSub('main');
   const numPref = (key: string, fallback: number): number => {
@@ -67,7 +67,18 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
 
   if (sub === 'theme') {
     return <SubLayout title="主题" onBack={back}>
-      <div className="select-row"><span>主题</span><select value="dark" onChange={() => undefined}><option value="dark">深色</option></select></div>
+      <h3 className="config-title">外观</h3>
+      <div className="theme-options" role="radiogroup" aria-label="外观">
+        {THEME_OPTIONS.map((option) => (
+          <button key={option.key} type="button" role="radio" aria-checked={themeMode === option.key}
+            className={`theme-option ${themeMode === option.key ? 'selected' : ''}`}
+            onClick={() => set('theme', option.key)}>
+            <span className={`theme-preview ${option.key}`} aria-hidden="true"><i /><i /></span>
+            <span>{option.label}</span>
+          </button>
+        ))}
+      </div>
+      <p className="muted">选择「跟随系统」时，外观会随设备的深浅色设置自动切换。</p>
       <div className="select-row"><span>字体样式</span>
         <select value={(prefs.fontStyle as string) || 'serif'} onChange={(e) => set('fontStyle', e.target.value)}>
           {FONTS.map((font) => <option key={font.key} value={font.key}>{font.label}</option>)}
@@ -149,7 +160,9 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
       <div className="settings-section">
         <button className="link-row" onClick={() => setSub('general')}><SettingsIcon size={18} /> 通用 <ChevronRight size={17} /></button>
         <button className="link-row" onClick={() => setSub('playback')}><HeadphonesIcon size={18} /> 播放 <ChevronRight size={17} /></button>
-        <button className="link-row" onClick={() => setSub('theme')}><PaletteIcon size={18} /> 主题 <span className="accent-preview" style={{ backgroundColor: accent }} /> <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('theme')}><PaletteIcon size={18} /> 主题
+          <span className="row-value">{THEME_OPTIONS.find((option) => option.key === themeMode)?.label}</span>
+          <span className="accent-preview" style={{ backgroundColor: accent }} /> <ChevronRight size={17} /></button>
       </div>
 
       <h3 className="config-title">高级</h3>

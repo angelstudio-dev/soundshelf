@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiGet } from './api/client.js';
 import { Layout, type Page } from './components/Layout.js';
 import { Player } from './components/Player.js';
 import { AuthorBooks, Authors } from './pages/Authors.js';
@@ -12,6 +13,7 @@ import { Servers } from './pages/Servers.js';
 import { Settings } from './pages/Settings.js';
 import { StatsPage } from './pages/Stats.js';
 import { useAuth, usePlayer } from './store.js';
+import { applyPreferences, applyTheme } from './theme.js';
 import type { Book } from './types.js';
 
 export function App() {
@@ -23,6 +25,13 @@ export function App() {
   const [listKind, setListKind] = useState<ListKind>('recent');
   const [listBooks, setListBooks] = useState<Book[]>([]);
   const [playerOpen, setPlayerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    apiGet<Record<string, unknown>>('/settings')
+      .then((prefs) => applyPreferences(prefs))
+      .catch(() => applyTheme('dark'));
+  }, [user]);
 
   if (!ready) return <div className="boot-screen"><div className="boot-spinner" /><p>正在连接书库…</p></div>;
   if (!user) return <Login />;
