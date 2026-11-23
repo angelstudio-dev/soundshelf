@@ -99,8 +99,8 @@ export function seedDemoData(): void {
       const duration = 40;
       insertBook.run(id, sourceId, externalId, title, author, narrator,
         index < 2 ? '魔戒系列' : '', `${title} 是一场关于勇气与想象的旅程。由 ${narrator} 演播的演示音频，用于体验播放器功能。`,
-        coverDataUri(title, author, colorA, colorB), JSON.stringify(index % 3 === 0 ? ['经典'] : ['精选']),
-        duration, addedAt, addedAt);
+        coverDataUri(title, author, colorA, colorB), duration,
+        JSON.stringify(index % 3 === 0 ? ['经典'] : ['精选']), addedAt, addedAt);
 
       for (let track = 0; track < 2; track += 1) {
         insertTrack.run(`${id}-track-${track}`, id, `第 ${track + 1} 部分`, wavPath, 20, 160000, track);

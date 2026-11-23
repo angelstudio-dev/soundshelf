@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPatch } from '../api/client.js';
 import GlassyCarousel, { type GlassyCarouselItem } from '../components/GlassyCarousel.js';
-import StackCarousel, { type StackCarouselItem } from '../components/StackCarousel.js';
+import AccordionCarousel, { type AccordionItem } from '../components/AccordionCarousel.js';
 import type { ListKind } from './ListPage.js';
 import {
   ChevronRight, ClockIcon, DownloadIcon, FlameIcon, HeadphonesIcon, LockIcon, PlayIcon, SortIcon, UploadCloudIcon
@@ -118,8 +118,8 @@ export function Home({ onNavigate, onOpenBook, onPlay, onOpenList }: {
 
       {modules.continue && <Section title="继续听" onMore={() => onOpenList('continue', data?.continueListening ?? [])}>
         {data?.continueListening.length ? (
-          <StackCarousel
-            items={toItems(data.continueListening, continueSubtitle) as StackCarouselItem[]}
+          <AccordionCarousel
+            items={toItems(data.continueListening, continueSubtitle) as AccordionItem[]}
             label="继续听" autoPlay
             onOpenItem={(item) => openFromCarousel(data.continueListening)(item as GlassyCarouselItem)}
           />
