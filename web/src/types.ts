@@ -119,6 +119,13 @@ export type PlexOAuthStatus =
 export interface MediaInfo {
   size: number;
   bitrate: number;
+  format: string;
+  codec: string;
+}
+
+export interface Playlist {
+  name: string;
+  bookIds: string[];
 }
 
 export interface Stats {

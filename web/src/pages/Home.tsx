@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPatch } from '../api/client.js';
 import GlassyCarousel, { type GlassyCarouselItem } from '../components/GlassyCarousel.js';
 import StackCarousel, { type StackCarouselItem } from '../components/StackCarousel.js';
+import type { ListKind } from './ListPage.js';
 import {
-  ChevronRight, ClockIcon, DownloadIcon, FlameIcon, HeadphonesIcon, PlayIcon, SortIcon
+  ChevronRight, ClockIcon, DownloadIcon, FlameIcon, HeadphonesIcon, LockIcon, PlayIcon, SortIcon, UploadCloudIcon
 } from '../components/Icons.js';
 import { PageHeader, type Page } from '../components/Layout.js';
 import type { Book, Stats } from '../types.js';
@@ -31,10 +32,11 @@ const STAT_LABELS: Record<StatKey, string> = {
   listening: '收听时间', nowPlaying: '正在监听串口', finishedBooks: '已听完书籍'
 };
 
-export function Home({ onNavigate, onOpenBook, onPlay }: {
+export function Home({ onNavigate, onOpenBook, onPlay, onOpenList }: {
   onNavigate: (page: Page) => void;
   onOpenBook: (book: Book) => void;
   onPlay: (book: Book) => void;
+  onOpenList: (kind: ListKind, books: Book[]) => void;
 }) {
   const [data, setData] = useState<HomeData | null>(null);
   const [configOpen, setConfigOpen] = useState(false);
@@ -86,8 +88,9 @@ export function Home({ onNavigate, onOpenBook, onPlay }: {
       <div className="top-pills">
         <button className="library-pill"><span className="green-dot" /> 有声小说</button>
         <div className="top-pill-actions">
-          <button className="icon-button" onClick={() => onNavigate('books')}><DownloadIcon size={19} /></button>
-          <button className="icon-button" onClick={() => setConfigOpen(true)}><SortIcon size={19} /></button>
+          <button className="icon-button" title="导入" onClick={() => onNavigate('servers')}><UploadCloudIcon size={19} /></button>
+          <button className="icon-button" title="下载" onClick={() => onNavigate('books')}><DownloadIcon size={19} /></button>
+          <button className="icon-button" title="主页设置" onClick={() => setConfigOpen(true)}><SortIcon size={19} /></button>
         </div>
       </div>
 
@@ -103,17 +106,17 @@ export function Home({ onNavigate, onOpenBook, onPlay }: {
               <strong>{formatShortDuration(data?.stats.totalSeconds ?? 0)}</strong></div>
           )}
           {statItems.nowPlaying && (
-            <div className="stat-card"><FlameIcon size={18} /><span>正在监听串口</span>
+            <div className="stat-card"><FlameIcon size={18} /><span className="pro-label">正在监听串口<LockIcon size={12} className="pro-lock" /></span>
               <strong>{data?.stats.streak ?? 0} 天</strong></div>
           )}
           {statItems.finishedBooks && (
-            <div className="stat-card"><HeadphonesIcon size={18} /><span>已听完书籍</span>
+            <div className="stat-card accent"><HeadphonesIcon size={18} /><span className="pro-label">已听完书籍<LockIcon size={12} className="pro-lock" /></span>
               <strong>{data?.stats.finishedBooks ?? 0} 本</strong></div>
           )}
         </section>
       )}
 
-      {modules.continue && <Section title="继续听" onMore={() => onNavigate('books')}>
+      {modules.continue && <Section title="继续听" onMore={() => onOpenList('continue', data?.continueListening ?? [])}>
         {data?.continueListening.length ? (
           <StackCarousel
             items={toItems(data.continueListening, continueSubtitle) as StackCarouselItem[]}
@@ -123,7 +126,7 @@ export function Home({ onNavigate, onOpenBook, onPlay }: {
         ) : <p className="empty-hint bordered">当前正在听的书籍，将会出现在这里。</p>}
       </Section>}
 
-      {modules.recent && <Section title="最近添加" onMore={() => onNavigate('books')}>
+      {modules.recent && <Section title="最近添加" onMore={() => onOpenList('recent', data?.recentlyAdded ?? [])}>
         {data?.recentlyAdded.length ? (
           <GlassyCarousel
             items={toItems(data.recentlyAdded, addedSubtitle)}
@@ -133,7 +136,7 @@ export function Home({ onNavigate, onOpenBook, onPlay }: {
         ) : <p className="empty-hint bordered">暂无最近添加的书籍</p>}
       </Section>}
 
-      {modules.finished && <Section title="已完成" onMore={() => onNavigate('books')}>
+      {modules.finished && <Section title="已完成" onMore={() => onOpenList('finished', data?.finished ?? [])}>
         {data?.finished.length ? (
           <GlassyCarousel
             items={toItems(data.finished, (book) => book.author || '未知作者')}

@@ -1,23 +1,68 @@
 <wxs src="../../utils/format.wxs" module="fmt" />
 <view class="page" wx:if="{{book}}">
-  <image src="{{book.coverUrl}}" mode="aspectFill" style="width:360rpx;height:540rpx;border-radius:20rpx;margin:20rpx auto 30rpx;display:block" />
-  <view class="h1" style="text-align:center">{{book.title}}</view>
-  <view style="text-align:center;font-family:Georgia,serif;margin-top:10rpx">{{book.author || '未知作者'}}</view>
-  <view class="muted" style="text-align:center;margin-top:6rpx">由 {{book.narrator || '未知演播者'}} 演播</view>
-  <button class="button" style="margin-top:32rpx" bindtap="play">▶ {{book.progress && !book.progress.finished ? '继续播放' : '开始播放'}}</button>
-
-  <view class="row between" style="margin-top:36rpx">
-    <view class="h2">章节</view>
-    <view class="muted">{{chapterCount}} 章</view>
-  </view>
-  <view class="chapter" wx:for="{{book.chapters}}" wx:key="id" bindtap="toChapter" data-index="{{index}}">
-    <view class="muted">{{index + 1 < 10 ? '0' : ''}}{{index + 1}}</view>
-    <view class="chapter-title">{{item.title}}</view>
-    <view class="muted">{{fmt.time(item.duration)}}</view>
+  <view class="detail-top">
+    <view class="back" bindtap="back">‹ 返回</view>
+    <view class="top-actions">
+      <view class="icon-btn" bindtap="download">↓</view>
+      <view class="icon-btn" bindtap="toggleMenu">···</view>
+    </view>
+    <view class="menu" wx:if="{{menuOpen}}">
+      <view class="menu-item" bindtap="markFinished">✓ {{book.progress && book.progress.finished ? '标记为未完成' : '标记为已完成'}}</view>
+      <view class="menu-item" bindtap="addToPlaylist">∞ 添加到播放清单</view>
+    </view>
   </view>
 
-  <view class="card" style="margin-top:30rpx">
-    <view class="muted">简介</view>
-    <view style="font-size:26rpx;line-height:1.7;margin-top:12rpx">{{book.description || '暂无简介'}}</view>
+  <image src="{{book.coverUrl}}" class="cover" mode="aspectFill" />
+  <view class="h1 title">{{book.title}}</view>
+  <view class="author" bindtap="toAuthor">来自 {{book.author || '未知主播'}} ›</view>
+
+  <button class="button primary" bindtap="play">▶ {{book.progress && !book.progress.finished ? '继续聆听' : (book.progress && book.progress.finished ? '重新播放' : '开始聆听')}}</button>
+
+  <view class="media-wrap" bindtap="toggleMedia">
+    <view class="media-cards" wx:if="{{mediaGroup === 0}}">
+      <view class="media-card"><view class="muted">长度</view><view class="mv">{{length.hours}} 小时</view><view class="muted">{{length.minutes}} 分钟</view></view>
+      <view class="media-card"><view class="muted">文件大小</view><view class="mv">{{media.sizeText}}</view></view>
+      <view class="media-card"><view class="muted">码率</view><view class="mv">{{media.bitrate || '—'}}</view><view class="muted">kbps</view></view>
+    </view>
+    <view class="media-cards" wx:else>
+      <view class="media-card"><view class="muted">码率</view><view class="mv">{{media.bitrate || '—'}}</view><view class="muted">kbps</view></view>
+      <view class="media-card"><view class="muted">编码</view><view class="mv">{{media.codec}}</view></view>
+      <view class="media-card"><view class="muted">格式</view><view class="mv">{{media.format}}</view></view>
+    </view>
+    <view class="media-dots"><view class="dot {{mediaGroup === 0 ? 'active' : ''}}"></view><view class="dot {{mediaGroup === 1 ? 'active' : ''}}"></view></view>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{tab === 'chapters' ? 'active' : ''}}" data-tab="chapters" bindtap="setTab">章节</view>
+    <view class="tab {{tab === 'bookmarks' ? 'active' : ''}}" data-tab="bookmarks" bindtap="setTab">书签</view>
+    <view class="tab {{tab === 'history' ? 'active' : ''}}" data-tab="history" bindtap="setTab">历史记录</view>
+  </view>
+
+  <view wx:if="{{tab === 'chapters'}}" class="chapter-list">
+    <view class="chapter" wx:for="{{book.chapters}}" wx:key="id" bindtap="toChapter" data-index="{{index}}">
+      <view class="muted">{{index + 1 < 10 ? '0' : ''}}{{index + 1}}</view>
+      <view class="chapter-title">{{item.title}}</view>
+      <view class="muted">{{fmt.time(item.duration)}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{tab === 'bookmarks'}}" class="bookmark-list">
+    <view class="chapter" wx:for="{{bookmarks}}" wx:key="id">
+      <view class="chapter-title">{{item.title || '书签'}}</view>
+      <view class="muted">{{fmt.time(item.position)}}</view>
+    </view>
+    <view wx:if="{{!bookmarks.length}}" class="empty-state">🔖 没有书签</view>
+  </view>
+
+  <view wx:if="{{tab === 'history'}}" class="history-list">
+    <view wx:for="{{historyByDay}}" wx:key="day" wx:for-item="group">
+      <view class="history-day">{{group.day}}</view>
+      <view class="history-row" wx:for="{{group.events}}" wx:key="id" wx:for-item="event">
+        <view class="history-time">{{event.time}}</view>
+        <view class="history-kind {{event.kind === 'added' ? 'added' : ''}}">{{event.kind === 'added' ? '+' : '▶'}}</view>
+        <view class="history-info"><view>{{event.label}}</view><view class="muted">{{event.bookTitle}}</view></view>
+      </view>
+    </view>
+    <view wx:if="{{!historyByDay.length}}" class="empty-state">还没有收听记录</view>
   </view>
 </view>

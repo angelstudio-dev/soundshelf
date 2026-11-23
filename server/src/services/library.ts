@@ -83,6 +83,10 @@ export interface ListBooksQuery {
   page?: number;
   limit?: number;
   sourceId?: string;
+  /** 播放清单内书籍 ID 列表（逗号分隔） */
+  bookIds?: string[];
+  /** 流派（匹配 tags 字段） */
+  genre?: string;
 }
 
 export function listBooks(query: ListBooksQuery): { books: Book[]; total: number; page: number; limit: number } {
@@ -99,6 +103,19 @@ export function listBooks(query: ListBooksQuery): { books: Book[]; total: number
   if (query.sourceId) {
     clauses.push('b.source_id = ?');
     params.push(query.sourceId);
+  }
+  if (query.bookIds) {
+    if (query.bookIds.length === 0) {
+      clauses.push('0 = 1');
+    } else {
+      const placeholders = query.bookIds.map(() => '?').join(',');
+      clauses.push(`b.id IN (${placeholders})`);
+      params.push(...query.bookIds);
+    }
+  }
+  if (query.genre) {
+    clauses.push(`b.tags LIKE ?`);
+    params.push(`%${query.genre}%`);
   }
   if (query.userId && query.filter) {
     if (query.filter === 'finished') {

@@ -1,75 +1,132 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiGet } from '../api/client.js';
 import { BookCard } from '../components/BookCard.js';
-import { GridIcon, ListIcon, SearchIcon, SortIcon } from '../components/Icons.js';
+import {
+  GridIcon, ListIcon, SearchIcon, SortIcon, UploadCloudIcon
+} from '../components/Icons.js';
 import { PageHeader } from '../components/Layout.js';
-import type { Book } from '../types.js';
+import type { Book, Playlist } from '../types.js';
 import { formatShortDuration, groupByInitial } from '../utils.js';
 
-type Filter = 'all' | 'unfinished' | 'in-progress' | 'finished' | 'series' | 'downloaded';
+type Filter = 'all' | 'unfinished' | 'playlist' | 'downloaded' | 'genre';
 type Sort = 'recent' | 'title' | 'author' | 'duration';
 
 const filters: { key: Filter; label: string }[] = [
-  { key: 'all', label: '所有' },
   { key: 'unfinished', label: '未完成' },
-  { key: 'in-progress', label: '收听中' },
-  { key: 'finished', label: '已完成' },
-  { key: 'series', label: '系列' },
-  { key: 'downloaded', label: '已下载' }
+  { key: 'playlist', label: '播放列表' },
+  { key: 'downloaded', label: '已下载' },
+  { key: 'genre', label: '流派' }
 ];
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 export function Books({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>('unfinished');
   const [sort, setSort] = useState<Sort>('title');
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [search, setSearch] = useState('');
   const [showSort, setShowSort] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistName, setPlaylistName] = useState('');
+  const [genre, setGenre] = useState('');
+  const [genres, setGenres] = useState<string[]>([]);
+  const [genreOpen, setGenreOpen] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams({ filter, sort, limit: '100' });
+    apiGet<{ playlists: Playlist[] }>('/playlists').then((data) => {
+      setPlaylists(data.playlists || []);
+      if (!playlistName && data.playlists?.length) setPlaylistName(data.playlists[0].name);
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams({ sort, limit: '100' });
     if (search.trim()) params.set('search', search.trim());
+    if (filter === 'unfinished') params.set('filter', 'unfinished');
     apiGet<{ books: Book[] }>(`/books?${params}`)
       .then((data) => setBooks(data.books))
       .catch(() => setBooks([]));
   }, [filter, sort, search]);
 
-  // 「已下载」由浏览器离线缓存标记决定，这里用 localStorage 过滤
+  useEffect(() => {
+    const set = new Set<string>();
+    for (const book of books) for (const tag of book.tags || []) if (tag.trim()) set.add(tag.trim());
+    setGenres(Array.from(set).sort());
+  }, [books]);
+
+  const selectedPlaylist = useMemo(
+    () => playlists.find((item) => item.name === playlistName),
+    [playlists, playlistName]
+  );
+
   const visible = useMemo(() => {
-    if (filter !== 'downloaded') return books;
-    let saved: string[] = [];
-    try { saved = JSON.parse(localStorage.getItem('ss-downloaded') || '[]'); } catch { /* ignore */ }
-    return books.filter((book) => saved.includes(book.id));
-  }, [books, filter]);
+    let result = books;
+    if (filter === 'playlist') {
+      const ids = selectedPlaylist?.bookIds || [];
+      result = result.filter((book) => ids.includes(book.id));
+    } else if (filter === 'downloaded') {
+      let saved: string[] = [];
+      try { saved = JSON.parse(localStorage.getItem('ss-downloaded') || '[]'); } catch { /* ignore */ }
+      result = result.filter((book) => saved.includes(book.id));
+    } else if (filter === 'genre' && genre) {
+      result = result.filter((book) => (book.tags || []).some((tag) => tag.includes(genre)));
+    }
+    return result;
+  }, [books, filter, selectedPlaylist, genre]);
 
   const groups = useMemo(() => groupByInitial(visible, (book) => book.title), [visible]);
   const availableLetters = new Set(groups.map((group) => group.letter));
   const jumpTo = (letter: string) => document.getElementById(`book-group-${letter}`)?.scrollIntoView({ behavior: 'smooth' });
 
+  const chooseFilter = (key: Filter) => {
+    setFilter(key);
+    if (key === 'genre') setGenreOpen(true);
+    else setGenreOpen(false);
+  };
+
   return (
     <>
-      <PageHeader title="书架" subtitle={`${visible.length} 本书`}
-        action={
-          <div className="header-actions">
-            <button className="icon-button" onClick={() => setView(view === 'grid' ? 'list' : 'grid')}>
-              {view === 'grid' ? <ListIcon size={20} /> : <GridIcon size={20} />}
-            </button>
-            <button className="icon-button" onClick={() => setShowSort(!showSort)}><SortIcon size={20} /></button>
-          </div>
-        } />
+      <div className="top-pills">
+        <button className="library-pill"><span className="green-dot" /> 有声小说</button>
+        <div className="top-pill-actions">
+          <button className="icon-button" title="导入"><UploadCloudIcon size={19} /></button>
+          <button className="icon-button" title="排序" onClick={() => setShowSort(!showSort)}><SortIcon size={19} /></button>
+        </div>
+      </div>
+      <PageHeader title="书架" subtitle={`${visible.length} 本书`} />
+
       <div className="search-inline">
         <SearchIcon size={18} />
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索书名、作者或章节" />
       </div>
       <div className="chip-row">
         {filters.map((item) => (
-          <button key={item.key} className={`chip ${filter === item.key ? 'active' : ''}`} onClick={() => setFilter(item.key)}>
-            {item.label}
+          <button key={item.key} className={`chip ${filter === item.key ? 'active' : ''}`} onClick={() => chooseFilter(item.key)}>
+            {item.label}{item.key === 'genre' && <span className="chip-caret">▾</span>}
           </button>
         ))}
+        <button className="icon-button" onClick={() => setView(view === 'grid' ? 'list' : 'grid')}>
+          {view === 'grid' ? <ListIcon size={18} /> : <GridIcon size={18} />}
+        </button>
       </div>
+      {filter === 'playlist' && (
+        <div className="sub-filter-row">
+          {playlists.length ? playlists.map((item) => (
+            <button key={item.name} className={`chip small ${playlistName === item.name ? 'active' : ''}`}
+              onClick={() => setPlaylistName(item.name)}>{item.name} ({item.bookIds.length})</button>
+          )) : <span className="muted small-text">还没有播放清单，在书籍详情的「…」菜单里添加</span>}
+        </div>
+      )}
+      {filter === 'genre' && genreOpen && (
+        <div className="sub-filter-row">
+          <button className={`chip small ${!genre ? 'active' : ''}`} onClick={() => setGenre('')}>全部流派</button>
+          {genres.map((item) => (
+            <button key={item} className={`chip small ${genre === item ? 'active' : ''}`} onClick={() => setGenre(item)}>{item}</button>
+          ))}
+          {!genres.length && <span className="muted small-text">书库中暂无流派标签</span>}
+        </div>
+      )}
       {showSort && (
         <div className="sort-row">
           <label>排序
@@ -100,7 +157,6 @@ export function Books({ onOpenBook }: { onOpenBook: (book: Book) => void }) {
                       <span className="book-row-author">{book.author || '未知作者'}</span>
                       <span className="book-row-title">{book.title}</span>
                       <span className="duration-pill">
-                        {book.progress?.position ? <span className="pill-progress" style={{ width: `${Math.min(100, (book.progress.position / book.duration) * 100)}%` }} /> : null}
                         <span className="pill-label">▶ {formatShortDuration(book.duration)}</span>
                       </span>
                     </span>

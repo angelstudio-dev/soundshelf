@@ -17,7 +17,7 @@ import {
   getRecentlyAdded, listBooks, listCollections, resolveStreamTarget, searchBooks
 } from './services/library.js';
 import {
-  deleteSetting, getSetting, listProgress, listSettingValues, listSettings, markFinished, resetProgress, saveProgress, setSetting
+  deleteSetting, getSetting, listProgress, listSettings, markFinished, resetProgress, saveProgress, setSetting
 } from './services/progress.js';
 import { createBookmark, deleteBookmark, listBookmarks, updateBookmark } from './services/bookmarks.js';
 import { getStats } from './services/stats.js';
@@ -185,10 +185,16 @@ api.get('/books', requireAuth, (req, res) => {
     filter: z.enum(['all', 'unfinished', 'finished', 'in-progress', 'series']).optional(),
     sort: z.enum(['recent', 'title', 'author', 'duration', 'progress']).optional(),
     sourceId: z.string().optional(),
+    genre: z.string().optional(),
+    bookIds: z.string().optional(),
     page: z.coerce.number().int().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(100).optional()
   }).parse(req.query);
-  res.json(listBooks({ ...query, userId: userId(req) }));
+  res.json(listBooks({
+    ...query,
+    userId: userId(req),
+    bookIds: query.bookIds ? query.bookIds.split(',').filter(Boolean) : undefined
+  }));
 });
 
 api.get('/books/:id', requireAuth, (req, res) => res.json(getBook(req.params.id, userId(req))));
@@ -217,9 +223,9 @@ api.get('/books/:id/history', requireAuth, (req, res) => {
 });
 api.get('/books/:id/media', requireAuth, (req, res) => res.json(getMediaInfo(req.params.id)));
 
-// 播放清单：以 settings 的 playlist 键保存，避免额外表结构
+// 播放清单：以 settings 的 playlists 键保存，避免额外表结构
 api.get('/playlists', requireAuth, (req, res) => {
-  res.json({ playlists: listSettingValues(userId(req), 'playlist:') });
+  res.json({ playlists: getSetting<{ name: string; bookIds: string[] }[]>(userId(req), 'playlists', []) });
 });
 api.post('/playlists', requireAuth, (req, res) => {
   const input = body(z.object({ name: z.string().default('播放清单'), bookId: z.string().min(1) }), req.body);
@@ -233,6 +239,15 @@ api.post('/playlists', requireAuth, (req, res) => {
   if (!playlist.bookIds.includes(input.bookId)) playlist.bookIds.push(input.bookId);
   setSetting(uid, 'playlists', existing);
   res.status(201).json({ playlist });
+});
+api.delete('/playlists/:name/books/:bookId', requireAuth, (req, res) => {
+  const uid = userId(req);
+  const existing = getSetting<{ name: string; bookIds: string[] }[]>(uid, 'playlists', []);
+  const playlist = existing.find((item) => item.name === req.params.name);
+  if (!playlist) throw notFound('播放清单不存在');
+  playlist.bookIds = playlist.bookIds.filter((id) => id !== req.params.bookId);
+  setSetting(uid, 'playlists', existing);
+  res.json({ playlist });
 });
 
 // ---------- 音频与封面代理 ----------

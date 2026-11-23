@@ -22,6 +22,10 @@ export const SkipBackIcon = (p: IconProps) => <Icon {...p}><path d="M4 12a8 8 0 
 export const SkipForwardIcon = (p: IconProps) => <Icon {...p}><path d="M20 12a8 8 0 1 1-3-6.2" /><path d="M20 4v5h-5" /></Icon>;
 export const RewindIcon = (p: IconProps) => <Icon {...p}><path d="M11 8 6 12l5 4z" fill="currentColor" stroke="none" /><text x="12" y="16" fontSize="10" fill="currentColor" stroke="none">15</text></Icon>;
 export const ForwardIcon = (p: IconProps) => <Icon {...p}><path d="M13 8l5 4-5 4z" fill="currentColor" stroke="none" /><text x="1" y="16" fontSize="10" fill="currentColor" stroke="none">30</text></Icon>;
+export const Replay15Icon = (p: IconProps) => <Icon {...p}><path d="M12 5a7 7 0 1 1-6.8 5.3" /><path d="M5 4v4h4" /><text x="7.5" y="15.5" fontSize="8.5" fontWeight="700" fill="currentColor" stroke="none">15</text></Icon>;
+export const Forward30Icon = (p: IconProps) => <Icon {...p}><path d="M12 5a7 7 0 1 0 6.8 5.3" /><path d="M19 4v4h-4" /><text x="8" y="15.5" fontSize="8.5" fontWeight="700" fill="currentColor" stroke="none">30</text></Icon>;
+export const LoopIcon = (p: IconProps) => <Icon {...p}><path d="M17 2l4 4-4 4" /><path d="M3 11V9a3 3 0 0 1 3-3h15" /><path d="M7 22l-4-4 4-4" /><path d="M21 13v2a3 3 0 0 1-3 3H3" /></Icon>;
+export const UploadCloudIcon = (p: IconProps) => <Icon {...p}><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9" /><path d="M12 13v8m0-8-3 3m3-3 3 3" /></Icon>;
 export const BookmarkIcon = (p: IconProps) => <Icon {...p}><path d="M6 3h12v18l-6-4-6 4z" /></Icon>;
 export const SleepIcon = (p: IconProps) => <Icon {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" /></Icon>;
 export const SpeedIcon = (p: IconProps) => <Icon {...p}><path d="M12 14 16 8" /><circle cx="12" cy="14" r="8" /><path d="M5 19h14" /></Icon>;

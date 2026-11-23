@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiDelete, apiGet, apiPost, mediaUrl } from '../api/client.js';
 import {
-  BookmarkIcon, CheckIcon, ChevronLeft, DownloadIcon, ListIcon, MoreIcon, PauseIcon, PlayIcon, TrashIcon
+  BookmarkIcon, CheckIcon, ChevronLeft, DownloadIcon, ListIcon, MoreIcon, PauseIcon, PlayIcon, PlusIcon, TrashIcon
 } from '../components/Icons.js';
 import { usePlayer } from '../store.js';
 import type { Book, Bookmark, ListeningEvent, MediaInfo } from '../types.js';
@@ -18,7 +18,8 @@ export function BookDetail({ book, onBack, onPlay, onOpenAuthor }: Props) {
   const [detail, setDetail] = useState<Book>(book);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [history, setHistory] = useState<ListeningEvent[]>([]);
-  const [media, setMedia] = useState<MediaInfo>({ size: 0, bitrate: 0 });
+  const [media, setMedia] = useState<MediaInfo>({ size: 0, bitrate: 0, format: '—', codec: '—' });
+  const [mediaGroup, setMediaGroup] = useState<0 | 1>(0);
   const [tab, setTab] = useState<'chapters' | 'bookmarks' | 'history'>('chapters');
   const [menuOpen, setMenuOpen] = useState(false);
   const player = usePlayer();
@@ -87,10 +88,26 @@ export function BookDetail({ book, onBack, onPlay, onOpenAuthor }: Props) {
         </button>
       </div>
 
-      <div className="detail-info-grid three">
-        <div><span>长度</span><strong>{length.hours} 小时</strong><small>{length.minutes} 分钟</small></div>
-        <div><span>文件大小</span><strong>{media.size ? formatSize(media.size) : '—'}</strong><small>{media.size ? '' : '字节'}</small></div>
-        <div><span>码率</span><strong>{media.bitrate || '—'}</strong><small>kbps</small></div>
+      <div className="detail-media-wrap">
+        <div className="detail-info-grid three" onClick={() => setMediaGroup(mediaGroup === 0 ? 1 : 0)}>
+          {mediaGroup === 0 ? (
+            <>
+              <div><span>长度</span><strong>{length.hours} 小时</strong><small>{length.minutes} 分钟</small></div>
+              <div><span>文件大小</span><strong>{media.size ? formatSize(media.size) : '—'}</strong><small>{media.size ? '' : '字节'}</small></div>
+              <div><span>码率</span><strong>{media.bitrate || '—'}</strong><small>kbps</small></div>
+            </>
+          ) : (
+            <>
+              <div><span>码率</span><strong>{media.bitrate || '—'}</strong><small>kbps</small></div>
+              <div><span>编码</span><strong>{media.codec}</strong><small>codec</small></div>
+              <div><span>格式</span><strong>{media.format}</strong><small>format</small></div>
+            </>
+          )}
+        </div>
+        <div className="detail-media-dots">
+          <button className={mediaGroup === 0 ? 'active' : ''} onClick={() => setMediaGroup(0)} aria-label="时长信息" />
+          <button className={mediaGroup === 1 ? 'active' : ''} onClick={() => setMediaGroup(1)} aria-label="编码信息" />
+        </div>
       </div>
 
       <div className="detail-tabs">
@@ -137,6 +154,9 @@ export function BookDetail({ book, onBack, onPlay, onOpenAuthor }: Props) {
               {events.map((event) => (
                 <div key={event.id} className="history-row">
                   <span className="history-time">{new Date(event.startedAt * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className={`history-kind ${event.kind === 'added' ? 'added' : ''}`}>
+                    {event.kind === 'added' ? <PlusIcon size={18} /> : <PlayIcon size={14} />}
+                  </span>
                   <span className="history-info">
                     <strong>{event.kind === 'added' ? '添加到库中' : `收听 ${Math.round(event.seconds / 60)} 分钟`}</strong>
                     <small>{event.bookTitle}</small>

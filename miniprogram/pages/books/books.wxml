@@ -7,7 +7,7 @@
       bindtap="setFilter" data-key="{{item.key}}">{{item.label}}</view>
   </view>
   <view class="book-row" wx:for="{{books}}" wx:key="id" bindtap="toBook" data-id="{{item.id}}">
-    <image class="cover" style="width:108rpx;height:160rpx" src="{{item.coverUrl}}" mode="aspectFill" />
+    <image class="cover" style="width:108rpx;height:108rpx" src="{{item.coverUrl}}" mode="aspectFill" />
     <view class="info">
       <view class="title">{{item.title}}</view>
       <view class="muted">{{item.author || '未知作者'}}</view>

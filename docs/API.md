@@ -45,7 +45,8 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | GET | `/authors/:name/books` | 指定作者的书籍 |
 | GET | `/books/:id/history` | 单本收听历史 |
 | GET | `/history?limit=` | 全部收听历史 |
-| GET | `/books/:id/media` | 文件大小与码率 |
+| GET | `/books/:id/media` | 文件大小、码率、编码与容器格式（`size` / `bitrate` / `codec` / `format`，由音轨 MIME 推断） |
+| GET | `/books?genre=&bookIds=` | 按流派（匹配 tags）与指定书籍 ID 列表（逗号分隔）过滤 |
 
 ## 书源
 
@@ -71,7 +72,8 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | PATCH/DELETE | `/bookmarks/:id` | 更新 / 删除 |
 | GET | `/stats` | 收听统计、连续天数、最近 30 天 |
 | GET/PATCH/DELETE | `/settings` / `/settings/:key` | 用户设置 |
-| GET/POST | `/playlists` | 播放清单（添加到清单） |
+| GET/POST | `/playlists` | 读取播放清单 / 添加书籍（POST body `{name, bookId}`） |
+| DELETE | `/playlists/:name/books/:bookId` | 从播放清单移除书籍 |
 
 ## 转录与任务
 

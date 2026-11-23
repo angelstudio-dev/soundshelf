@@ -132,11 +132,30 @@ export function getAllHistory(userId: string, limit = 50): ListeningEvent[] {
   }));
 }
 
-/** 书籍的文件总大小与估算码率（kbps） */
-export function getMediaInfo(bookId: string): { size: number; bitrate: number } {
+/** 书籍的文件总大小、估算码率（kbps）、编码与容器格式 */
+export function getMediaInfo(bookId: string): { size: number; bitrate: number; format: string; codec: string } {
   const row = db.prepare(`SELECT SUM(size) AS size, SUM(duration) AS duration FROM tracks WHERE book_id = ?`)
     .get(bookId) as { size: number | null; duration: number | null };
   const size = Number(row.size) || 0;
   const duration = Number(row.duration) || 0;
-  return { size, bitrate: duration > 0 ? Math.round((size * 8) / duration / 1000) : 0 };
+  const mimeRow = db.prepare(`SELECT mime_type FROM tracks WHERE book_id = ? AND mime_type != '' LIMIT 1`)
+    .get(bookId) as { mime_type: string } | undefined;
+  const { format, codec } = parseMediaFormat(mimeRow?.mime_type);
+  return { size, bitrate: duration > 0 ? Math.round((size * 8) / duration / 1000) : 0, format, codec };
+}
+
+/** 由 MIME 推断容器格式与编码名，如 audio/mpeg -> MP3/MP3，audio/mp4 -> M4A/AAC */
+function parseMediaFormat(mime?: string): { format: string; codec: string } {
+  const value = (mime || '').toLowerCase();
+  const subtype = value.split('/')[1]?.split(';')[0]?.trim() || '';
+  if (subtype.includes('mpeg') || subtype === 'mp3') return { format: 'MP3', codec: 'MP3' };
+  if (subtype.includes('x-m4a') || subtype === 'm4a') return { format: 'M4A', codec: 'AAC' };
+  if (subtype.includes('mp4')) return { format: 'M4A', codec: 'AAC' };
+  if (subtype.includes('aac')) return { format: 'AAC', codec: 'AAC' };
+  if (subtype.includes('flac')) return { format: 'FLAC', codec: 'FLAC' };
+  if (subtype.includes('ogg') || subtype.includes('opus')) return { format: 'OGG', codec: 'OPUS' };
+  if (subtype.includes('wma')) return { format: 'WMA', codec: 'WMA' };
+  if (subtype.includes('webm')) return { format: 'WEBM', codec: 'OPUS' };
+  if (!subtype) return { format: '—', codec: '—' };
+  return { format: subtype.toUpperCase(), codec: subtype.toUpperCase() };
 }
