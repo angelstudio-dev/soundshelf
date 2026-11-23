@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPatch } from '../api/client.js';
 import GlassyCarousel, { type GlassyCarouselItem } from '../components/GlassyCarousel.js';
+import StackCarousel, { type StackCarouselItem } from '../components/StackCarousel.js';
 import {
   ChevronRight, ClockIcon, DownloadIcon, FlameIcon, HeadphonesIcon, PlayIcon, SortIcon
 } from '../components/Icons.js';
@@ -114,10 +115,10 @@ export function Home({ onNavigate, onOpenBook, onPlay }: {
 
       {modules.continue && <Section title="继续听" onMore={() => onNavigate('books')}>
         {data?.continueListening.length ? (
-          <GlassyCarousel
-            items={toItems(data.continueListening, continueSubtitle)}
-            layout="square" compact label="继续听封面"
-            onOpenItem={openFromCarousel(data.continueListening)}
+          <StackCarousel
+            items={toItems(data.continueListening, continueSubtitle) as StackCarouselItem[]}
+            label="继续听" autoPlay
+            onOpenItem={(item) => openFromCarousel(data.continueListening)(item as GlassyCarouselItem)}
           />
         ) : <p className="empty-hint bordered">当前正在听的书籍，将会出现在这里。</p>}
       </Section>}
