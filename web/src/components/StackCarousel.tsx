@@ -10,14 +10,14 @@ const stackStyles = `
 .sc-stage{position:relative;height:var(--sc-h);display:flex;align-items:center;justify-content:center;
   perspective:1100px;transform-style:preserve-3d;touch-action:pan-y;user-select:none;cursor:grab;overflow:hidden}
 .sc-stage[data-dragging]{cursor:grabbing}
-.sc-card{position:absolute;top:50%;left:50%;display:block;padding:0;margin:0;border:5px solid #fff;
+.sc-card{position:absolute;top:50%;left:50%;display:block;padding:0;margin:0;border:0;
   border-radius:20px;overflow:hidden;background:var(--surface-2,#e9e5df);
-  box-shadow:0 14px 30px rgba(0,0,0,.28),inset 0 0 0 1px rgba(0,0,0,.05);
+  box-shadow:0 14px 30px rgba(0,0,0,.28);
   transform-style:preserve-3d;backface-visibility:hidden;cursor:pointer;
   transition:transform .6s cubic-bezier(.22,1,.36,1),width .6s cubic-bezier(.22,1,.36,1),
-    opacity .45s ease,box-shadow .3s,border-color .3s;outline-offset:4px}
+    opacity .45s ease,box-shadow .3s;outline-offset:4px}
 .sc-stage[data-dragging] .sc-card{transition:none}
-.sc-card[data-active]{border-color:#fff;box-shadow:0 20px 44px rgba(0,0,0,.38)}
+.sc-card[data-active]{box-shadow:0 20px 44px rgba(0,0,0,.38)}
 .sc-card:focus-visible{outline:2px solid var(--accent,#c99b72)}
 .sc-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .sc-shade{position:absolute;inset:0;pointer-events:none;
@@ -42,7 +42,7 @@ const stackStyles = `
 .sc-dot{width:6px;height:6px;border-radius:50%;background:var(--border,#555);border:0;padding:0;cursor:pointer;transition:background .2s,width .2s}
 .sc-dot[data-active]{width:18px;border-radius:4px;background:var(--accent,#c99b72)}
 @media(prefers-reduced-motion:reduce){.sc-card,.sc-arrow{transition:none}}
-@media(max-width:600px){.sc-title{font-size:13px}.sc-card{border-width:4px}}
+@media(max-width:600px){.sc-title{font-size:13px}}
 `;
 
 export interface StackCarouselItem {
