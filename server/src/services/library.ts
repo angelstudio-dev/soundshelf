@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { config } from '../config.js';
 import { db } from '../db.js';
 import { badRequest, notFound } from '../errors.js';
 import { adapterFor, getSource } from '../sources/index.js';
@@ -64,7 +65,7 @@ export function mapBooks(rows: BookRow[], userId: string | undefined): Book[] {
     narrator: row.narrator,
     series: row.series,
     description: row.description,
-    coverUrl: row.cover_path ? `/api/assets/cover/${row.id}` : row.cover_url,
+    coverUrl: coverUrlFor(row),
     duration: row.duration,
     language: row.language,
     tags: (() => { try { return JSON.parse(row.tags); } catch { return []; } })(),
@@ -251,4 +252,28 @@ export function coverAuthHeaders(sourceId: string): Record<string, string> {
 
 export function stableAssetToken(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 16);
+}
+
+/**
+ * 封面长期签名：`<img>` / 小程序 `<image>` 无法附加 Authorization 头，
+ * 也不能依赖 15 分钟的访问令牌。这里用服务端密钥派生不可猜的短签名，
+ * 让封面地址长期有效，同时不暴露 Plex / Audiobookshelf 的原始令牌。
+ */
+export function coverSignature(bookId: string): string {
+  return createHmac('sha256', config.JWT_SECRET).update(`cover:${bookId}`).digest('hex').slice(0, 24);
+}
+
+export function verifyCoverSignature(bookId: string, signature: string): boolean {
+  const expected = coverSignature(bookId);
+  if (!signature || signature.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+
+/**
+ * 所有封面统一走服务端代理：Plex 的 `/library/metadata/.../thumb` 带
+ * `plex.direct` 主机名与私有令牌，浏览器与小程序都无法直连。
+ */
+export function coverUrlFor(row: { id: string; cover_path?: string | null; cover_url?: string | null }): string {
+  if (!row.cover_path && !row.cover_url) return '';
+  return `/api/assets/cover/${row.id}?t=${coverSignature(row.id)}`;
 }

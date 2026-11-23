@@ -14,7 +14,7 @@ import {
 } from './services/discovery.js';
 import {
   coverAuthHeaders, coverTarget, getBook, getCollection, getContinueListening, getFinished,
-  getRecentlyAdded, listBooks, listCollections, resolveStreamTarget, searchBooks
+  getRecentlyAdded, listBooks, listCollections, resolveStreamTarget, searchBooks, verifyCoverSignature
 } from './services/library.js';
 import {
   deleteSetting, getSetting, listProgress, listSettings, markFinished, resetProgress, saveProgress, setSetting
@@ -297,8 +297,47 @@ api.get('/books/:id/stream', requireAuth, asyncRoute(async (req, res) => {
   throw notFound('音频文件不可访问');
 }));
 
-api.get('/assets/cover/:bookId', requireAuth, asyncRoute(async (req, res) => {
-  const target = coverTarget(req.params.bookId);
+/** 上游没有封面时返回的占位图，避免客户端出现裂图 */
+const placeholderCover = (title: string): string => {
+  const label = (title || '书').trim().slice(0, 1) || '书';
+  let hash = 0;
+  for (let i = 0; i < title.length; i += 1) hash = (hash * 31 + title.charCodeAt(i)) % 360;
+  const from = `hsl(${hash}, 26%, 22%)`;
+  const to = `hsl(${(hash + 38) % 360}, 34%, 34%)`;
+  const safe = label.replace(/[<>&'"]/g, '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="${from}"/><stop offset="100%" stop-color="${to}"/></linearGradient></defs>
+<rect width="400" height="400" fill="url(#g)"/>
+<text x="200" y="200" fill="rgba(255,255,255,.82)" font-family="Georgia,serif" font-size="150"
+ font-weight="500" text-anchor="middle" dominant-baseline="central">${safe}</text></svg>`;
+};
+
+const sendPlaceholder = (res: Response, bookId: string): void => {
+  const row = db.prepare('SELECT title FROM books WHERE id = ?').get(bookId) as { title: string } | undefined;
+  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.type('image/svg+xml').send(placeholderCover(row?.title ?? ''));
+};
+
+/** 封面既可带长期签名（img/小程序），也接受常规登录态 */
+const coverAccess = (req: Request, res: Response, next: NextFunction): void => {
+  const signature = typeof req.query.t === 'string' ? req.query.t : '';
+  if (signature && verifyCoverSignature(String(req.params.bookId), signature)) {
+    next();
+    return;
+  }
+  requireAuth(req as AuthRequest, res, next);
+};
+
+api.get('/assets/cover/:bookId', coverAccess, asyncRoute(async (req, res) => {
+  let target: { filePath?: string; url?: string; sourceId: string };
+  try {
+    target = coverTarget(req.params.bookId);
+  } catch {
+    sendPlaceholder(res, req.params.bookId);
+    return;
+  }
+  res.setHeader('Cache-Control', 'private, max-age=86400');
   if (target.filePath && existsSync(target.filePath)) {
     res.sendFile(target.filePath);
     return;
@@ -309,16 +348,25 @@ api.get('/assets/cover/:bookId', requireAuth, asyncRoute(async (req, res) => {
     return;
   }
   if (target.url) {
-    const upstream = await fetch(target.url, {
-      headers: coverAuthHeaders(target.sourceId),
-      signal: AbortSignal.timeout(15000)
-    });
-    if (!upstream.ok) throw notFound('封面加载失败');
+    let upstream: globalThis.Response | null = null;
+    try {
+      upstream = await fetch(target.url, {
+        headers: coverAuthHeaders(target.sourceId),
+        signal: AbortSignal.timeout(15000)
+      });
+    } catch {
+      upstream = null;
+    }
+    if (!upstream || !upstream.ok) {
+      sendPlaceholder(res, req.params.bookId);
+      return;
+    }
+    res.setHeader('Cache-Control', 'private, max-age=86400');
     res.type(upstream.headers.get('content-type') ?? 'image/jpeg');
     if (upstream.body) Readable.fromWeb(upstream.body as never).pipe(res);
     return;
   }
-  throw notFound('封面不存在');
+  sendPlaceholder(res, req.params.bookId);
 }));
 
 // ---------- 进度 ----------

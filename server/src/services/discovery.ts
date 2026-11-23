@@ -1,6 +1,6 @@
 import { db } from '../db.js';
 import type { Book } from '../types.js';
-import { mapBooks } from './library.js';
+import { mapBooks, coverUrlFor } from './library.js';
 
 export interface AuthorSummary {
   name: string;
@@ -64,7 +64,7 @@ export function listAuthors(): AuthorSummary[] {
     group.duration += book.duration || 0;
     if (!group.cover) {
       const row = coverById.get(book.id);
-      group.cover = row?.cover_path ? `/api/assets/cover/${book.id}` : book.coverUrl;
+      group.cover = coverUrlFor({ id: book.id, cover_path: row?.cover_path, cover_url: row?.cover_url });
     }
     groups.set(author, group);
   }
@@ -90,7 +90,7 @@ export function getHistory(userId: string, bookId: string): ListeningEvent[] {
   if (!book) return [];
   const coverRow = db.prepare('SELECT cover_path, cover_url FROM books WHERE id = ?').get(bookId) as
     { cover_path: string; cover_url: string } | undefined;
-  const coverUrl = coverRow?.cover_path ? `/api/assets/cover/${bookId}` : coverRow?.cover_url ?? '';
+  const coverUrl = coverUrlFor({ id: bookId, cover_path: coverRow?.cover_path, cover_url: coverRow?.cover_url });
   const events: ListeningEvent[] = [];
 
   const sessions = db.prepare(`SELECT id, started_at, seconds FROM sessions
@@ -126,7 +126,7 @@ export function getAllHistory(userId: string, limit = 50): ListeningEvent[] {
     { id: string; started_at: number; seconds: number; book_id: string; title: string; cover_path: string; cover_url: string }[];
   return sessions.map((row) => ({
     id: row.id, bookId: row.book_id, bookTitle: row.title,
-    coverUrl: row.cover_path ? `/api/assets/cover/${row.book_id}` : row.cover_url,
+    coverUrl: coverUrlFor({ id: row.book_id, cover_path: row.cover_path, cover_url: row.cover_url }),
     startedAt: row.started_at, seconds: Number(row.seconds) || 0,
     kind: 'session' as const, position: 0
   }));

@@ -161,8 +161,17 @@ export async function syncSource(id: string): Promise<{ books: number; collectio
   }
 
   if (rawBooks.length) {
+    const existing = (db.prepare('SELECT COUNT(*) AS count FROM books WHERE source_id = ?').get(source.id) as { count: number }).count;
+    // 上游只返回了少量条目时大概率是分页中断或接口异常，此时绝不能清理本地书库，
+    // 否则一次失败同步会把整个书库删到只剩几条。
+    const suspicious = errors.length > 0 || (existing > 20 && rawBooks.length < existing * 0.5);
     const persist = db.transaction(() => {
       for (const raw of rawBooks) persistBook(source, raw, now);
+      if (suspicious) {
+        logger.warn({ sourceId: source.id, existing, received: rawBooks.length, errors },
+          'skip pruning stale books: sync looks incomplete');
+        return;
+      }
       const ids = rawBooks.map((raw) => internalBookId(source.id, raw.externalId));
       const placeholders = ids.map(() => '?').join(',');
       if (ids.length) db.prepare(`DELETE FROM books WHERE source_id = ? AND id NOT IN (${placeholders})`).run(source.id, ...ids);
