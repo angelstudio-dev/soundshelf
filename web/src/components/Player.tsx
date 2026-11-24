@@ -15,6 +15,9 @@ export function Player({ onClose }: { onClose: () => void }) {
   const player = usePlayer();
   const [tab, setTab] = useState<Tab>('now');
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [introDraft, setIntroDraft] = useState(0);
+  const [outroDraft, setOutroDraft] = useState(0);
   const [sleepOpen, setSleepOpen] = useState(false);
   const [effectsOpen, setEffectsOpen] = useState(false);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
@@ -34,6 +37,13 @@ export function Player({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     player.applyAudioSettings({ voiceBoost, ...eq });
   }, [voiceBoost, eq, player.applyAudioSettings]);
+
+  useEffect(() => {
+    if (skipOpen) {
+      setIntroDraft(player.skipSettings.introSkipSeconds);
+      setOutroDraft(player.skipSettings.outroSkipSeconds);
+    }
+  }, [skipOpen, player.skipSettings]);
 
   if (!book) return null;
 
@@ -104,6 +114,9 @@ export function Player({ onClose }: { onClose: () => void }) {
               <div className="now-row"><span>总时长</span><strong>{formatTime(book.duration)}</strong></div>
               <div className="now-row"><span>睡眠定时</span><strong>{sleepLabel(player.sleepTimer)}</strong></div>
               <div className="now-row"><span>声音增强</span><strong>{voiceBoost ? '已开启' : '关闭'}</strong></div>
+              <div className="now-row"><span>片头跳过</span><strong>{player.skipSettings.introSkipSeconds > 0 ? `${player.skipSettings.introSkipSeconds} 秒` : '关闭'}</strong></div>
+              <div className="now-row"><span>片尾跳过</span><strong>{player.skipSettings.outroSkipSeconds > 0 ? `${player.skipSettings.outroSkipSeconds} 秒` : '关闭'}</strong></div>
+              <button className="secondary-button wide" onClick={() => setSkipOpen(true)}>设置片头 / 片尾跳过</button>
             </div>
           )}
 
@@ -173,6 +186,34 @@ export function Player({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </div>
+        </Sheet>
+      )}
+
+      {skipOpen && (
+        <Sheet title="片头 / 片尾跳过" onClose={() => setSkipOpen(false)}>
+          <p className="muted">按本书单独保存：每轨开始时自动跳过片头，播放到片尾前自动切到下一轨。填 0 表示关闭。</p>
+          {([['片头跳过', introDraft, setIntroDraft], ['片尾跳过', outroDraft, setOutroDraft]] as const).map(([label, value, setValue]) => (
+            <div key={label}>
+              <label className="skip-row">
+                <span>{label}</span>
+                <input type="number" min={0} max={600} step={1} value={value}
+                  onChange={(event) => setValue(Math.max(0, Math.min(600, Number(event.target.value) || 0)))} />
+                <strong>秒</strong>
+              </label>
+              <div className="option-grid">
+                {[0, 15, 30, 60, 90].map((preset) => (
+                  <button key={preset} className={value === preset ? 'selected' : ''}
+                    onClick={() => setValue(preset)}>
+                    {preset === 0 ? '关闭' : `${preset} 秒`} {value === preset && <CheckIcon size={14} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button className="primary-button wide skip-save" onClick={() => {
+            player.setSkipSettings({ introSkipSeconds: introDraft, outroSkipSeconds: outroDraft });
+            setSkipOpen(false);
+          }}>保存</button>
         </Sheet>
       )}
 

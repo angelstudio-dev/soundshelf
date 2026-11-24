@@ -1,15 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { apiGet, apiPatch } from '../api/client.js';
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { apiDownload, apiGet, apiPatch, apiPost } from '../api/client.js';
 import {
-  ChevronLeft, ChevronRight, CloudIcon, DatabaseIcon, HeadphonesIcon, PaletteIcon,
-  ServerIcon, SettingsIcon, StarIcon
+  ChevronLeft, ChevronRight, CloudIcon, DatabaseIcon, DownloadIcon, HeadphonesIcon, PaletteIcon,
+  ServerIcon, SettingsIcon, StarIcon, UploadCloudIcon, XIcon
 } from '../components/Icons.js';
 import { PageHeader, type Page } from '../components/Layout.js';
 import { usePlayer } from '../store.js';
 import { applyPreferences, normalizeThemeMode, THEME_OPTIONS } from '../theme.js';
 import { formatSize } from '../utils.js';
 
-type SubPage = 'main' | 'general' | 'playback' | 'theme' | 'sync' | 'metadata' | 'storage';
+type SubPage = 'main' | 'general' | 'playback' | 'theme' | 'sync' | 'metadata' | 'storage' | 'backup';
+
+interface RestoreResult {
+  restored: { progress: number; bookmarks: number; sessions: number; settings: number };
+  skipped: { progress: number; bookmarks: number; sessions: number };
+}
 
 const ACCENT_COLORS = ['#c99b72', '#6b7de8', '#2f9be0', '#e45fad', '#e05252', '#f08a2e', '#e8c22f', '#3eb56a'];
 const FONTS = [
@@ -20,6 +25,9 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
   const [sub, setSub] = useState<SubPage>('main');
   const [prefs, setPrefs] = useState<Record<string, unknown>>({});
   const [message, setMessage] = useState('');
+  const [pendingRestore, setPendingRestore] = useState<{ fileName: string; payload: unknown } | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
   const player = usePlayer();
 
   useEffect(() => {
@@ -33,6 +41,58 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
     setPrefs(next);
     applyPreferences(next);
     void apiPatch('/settings', { key, value });
+  };
+
+  const downloadBackup = async () => {
+    try {
+      const { blob, filename } = await apiDownload('/backup');
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename ?? 'soundshelf-backup.json';
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setMessage('备份文件已下载，请妥善保存');
+    } catch {
+      setMessage('备份下载失败，请重试');
+    }
+  };
+
+  const onRestoreFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()) as { app?: string; formatVersion?: number } | null;
+      if (!parsed || parsed.app !== 'soundshelf' || parsed.formatVersion !== 1) {
+        setMessage('所选文件不是有效的 SoundShelf 备份');
+        return;
+      }
+      setPendingRestore({ fileName: file.name, payload: parsed });
+    } catch {
+      setMessage('所选文件不是有效的备份文件');
+    }
+  };
+
+  const confirmRestore = async () => {
+    if (!pendingRestore || restoring) return;
+    setRestoring(true);
+    try {
+      const result = await apiPost<RestoreResult>('/backup/restore', pendingRestore.payload);
+      setPendingRestore(null);
+      const skipped = result.skipped.progress + result.skipped.bookmarks + result.skipped.sessions;
+      setMessage(`恢复完成：进度 ${result.restored.progress} 条、书签 ${result.restored.bookmarks} 条、`
+        + `收听历史 ${result.restored.sessions} 条、设置 ${result.restored.settings} 项`
+        + (skipped > 0 ? `；${skipped} 条因书籍不在当前书库中已跳过` : ''));
+      const loaded = await apiGet<Record<string, unknown>>('/settings').catch(() => null);
+      if (loaded) { setPrefs(loaded); applyPreferences(loaded); }
+      await player.refreshBookmarks().catch(() => undefined);
+    } catch (error) {
+      setPendingRestore(null);
+      setMessage(`恢复失败：${error instanceof Error ? error.message : '请重试'}`);
+    } finally {
+      setRestoring(false);
+    }
   };
 
   const accent = (prefs.accent as string) || ACCENT_COLORS[0];
@@ -125,6 +185,39 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
     </SubLayout>;
   }
 
+  if (sub === 'backup') {
+    return <SubLayout title="数据备份" onBack={back}>
+      <p className="muted">备份当前账号的播放进度、书签与笔记、全部设置（含每本书的播放偏好与播放清单）和收听历史，保存为一个 JSON 文件。不包含书库与音频文件本身。</p>
+      <h3 className="config-title">备份</h3>
+      <button className="secondary-button wide" onClick={() => void downloadBackup()}>
+        <DownloadIcon size={17} /> 导出备份
+      </button>
+      <h3 className="config-title">恢复</h3>
+      <p className="muted">从备份文件恢复会<b>替换</b>当前账号的上述数据，无法撤销。恢复只影响你自己的账号。</p>
+      <input ref={restoreInputRef} type="file" accept=".json,application/json" hidden onChange={(event) => void onRestoreFile(event)} />
+      <button className="secondary-button wide" onClick={() => restoreInputRef.current?.click()}>
+        <UploadCloudIcon size={17} /> 选择备份文件恢复
+      </button>
+      {message && <div className="notice">{message}</div>}
+      {pendingRestore && (
+        <div className="sheet-backdrop" onClick={() => !restoring && setPendingRestore(null)}>
+          <div className="sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-header"><strong>恢复备份</strong>
+              <button className="icon-button" onClick={() => setPendingRestore(null)} disabled={restoring}><XIcon size={20} /></button>
+            </div>
+            <p className="muted">确定要用「{pendingRestore.fileName}」恢复吗？当前账号的播放进度、书签、设置与收听历史将被备份内容替换，此操作无法撤销。</p>
+            <div className="sheet-actions">
+              <button className="secondary-button" onClick={() => setPendingRestore(null)} disabled={restoring}>取消</button>
+              <button className="primary-button" onClick={() => void confirmRestore()} disabled={restoring}>
+                {restoring ? '恢复中…' : '确认恢复'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </SubLayout>;
+  }
+
   if (sub === 'storage') {
     return <SubLayout title="存储空间" onBack={back}>
       <h3 className="config-title">元数据</h3>
@@ -132,7 +225,7 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
         <div className="status-row"><span>数据库大小</span><strong>4 kB</strong></div>
         <button className="danger-link" onClick={() => setMessage('演示环境不执行清空操作')}>清空</button>
       </div>
-      <button className="secondary-button wide" onClick={() => setMessage('数据库导出请在群晖服务端备份 data/ 目录')}>导出数据库</button>
+      <button className="secondary-button wide" onClick={() => setSub('backup')}>导出备份</button>
       <Toggle label="备份中包含下载" value={Boolean(prefs.backupDownloads)} onChange={(v) => set('backupDownloads', v)} />
       <h3 className="config-title">图片缓存</h3>
       <div className="settings-section">
@@ -170,6 +263,7 @@ export function Settings({ onNavigate, onLogout }: { onNavigate: (page: Page) =>
         <button className="link-row" onClick={() => setSub('sync')}><CloudIcon size={18} /> 云同步 <ChevronRight size={17} /></button>
         <button className="link-row" onClick={() => setSub('metadata')}><DatabaseIcon size={18} /> 元数据 <ChevronRight size={17} /></button>
         <button className="link-row" onClick={() => setSub('storage')}><DatabaseIcon size={18} /> 存储 <ChevronRight size={17} /></button>
+        <button className="link-row" onClick={() => setSub('backup')}><DownloadIcon size={18} /> 数据备份 <ChevronRight size={17} /></button>
         <button className="link-row" onClick={() => onNavigate('servers')}><ServerIcon size={18} /> 服务器 <ChevronRight size={17} /></button>
         <button className="link-row" onClick={() => onNavigate('stats')}><HeadphonesIcon size={18} /> 收听统计 <ChevronRight size={17} /></button>
       </div>

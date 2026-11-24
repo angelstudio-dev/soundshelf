@@ -20,6 +20,7 @@ import {
   deleteSetting, getSetting, listProgress, listSettings, markFinished, resetProgress, saveProgress, setSetting
 } from './services/progress.js';
 import { createBookmark, deleteBookmark, listBookmarks, updateBookmark } from './services/bookmarks.js';
+import { backupFileSchema, buildBackup, restoreBackup } from './services/backup.js';
 import { getStats } from './services/stats.js';
 import { getTranscript, requestTranscript } from './services/transcript.js';
 import { checkPlexPin, createPlexPin } from './services/plex-oauth.js';
@@ -29,7 +30,7 @@ export const api = Router();
 
 const body = <T extends z.ZodTypeAny>(schema: T, value: unknown): z.infer<T> => {
   const result = schema.safeParse(value);
-  if (!result.success) throw badRequest('请求参数不正确', result.error.flatten());
+  if (!result.success) throw badRequest('请求参数不正确', z.flattenError(result.error));
   return result.data;
 };
 
@@ -379,7 +380,9 @@ api.put('/progress/:bookId', requireAuth, (req, res) => {
     finished: z.boolean().optional(),
     sessionSeconds: z.number().min(0).optional(),
     sessionStartedAt: z.number().optional(),
-    playbackSpeed: z.number().min(0.25).max(5).optional()
+    playbackSpeed: z.number().min(0.25).max(5).optional(),
+    introSkipSeconds: z.number().min(0).max(600).optional(),
+    outroSkipSeconds: z.number().min(0).max(600).optional()
   }), req.body);
   res.json(saveProgress(userId(req), req.params.bookId, input));
 });
@@ -433,6 +436,19 @@ api.delete('/settings/:key', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- 数据备份与恢复 ----------
+api.get('/backup', requireAuth, (req, res) => {
+  const backup = buildBackup(userId(req));
+  const filename = `soundshelf-backup-${backup.exportedAt.slice(0, 10)}.json`;
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.type('application/json').send(JSON.stringify(backup, null, 2));
+});
+
+api.post('/backup/restore', requireAuth, (req, res) => {
+  const input = body(backupFileSchema, req.body);
+  res.json(restoreBackup(userId(req), input));
+});
+
 // ---------- 转录与队列 ----------
 api.get('/transcript/:bookId', requireAuth, (req, res) => res.json(getTranscript(req.params.bookId)));
 api.post('/transcript/:bookId', requireAuth, (req, res) => res.json(requestTranscript(req.params.bookId)));
@@ -444,7 +460,7 @@ api.get('/queue', requireAuth, (_req, res) => {
   res.json({ jobs: rows });
 });
 api.post('/queue', requireAuth, (req, res) => {
-  const input = body(z.object({ type: z.enum(['transcript', 'sync']), payload: z.record(z.unknown()).default({}) }), req.body);
+  const input = body(z.object({ type: z.enum(['transcript', 'sync']), payload: z.record(z.string(), z.unknown()).default({}) }), req.body);
   const id = randomUUID();
   db.prepare(`INSERT INTO jobs (id, type, payload, status, next_run_at, created_at) VALUES (?, ?, ?, 'pending', ?, ?)`)
     .run(id, input.type, JSON.stringify(input.payload), Date.now(), Date.now());

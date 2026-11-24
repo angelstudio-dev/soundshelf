@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   build:
@@ -28,3 +28,5 @@ jobs:
         run: npm run build --prefix web
       - name: Verify artifacts
         run: test -f server/dist/server.js && test -f web/dist/index.html
+      - name: Run server tests
+        run: npm test --prefix server

@@ -12,6 +12,15 @@ export interface SaveProgressInput {
   sessionSeconds?: number;
   sessionStartedAt?: number;
   playbackSpeed?: number;
+  introSkipSeconds?: number;
+  outroSkipSeconds?: number;
+}
+
+/** 每本书的播放偏好，与倍速存放在同一 settings 键 playback:<bookId> 中 */
+export interface PlaybackPrefs {
+  speed?: number;
+  introSkipSeconds?: number;
+  outroSkipSeconds?: number;
 }
 
 export function saveProgress(userId: string, bookId: string, input: SaveProgressInput) {
@@ -41,10 +50,13 @@ export function saveProgress(userId: string, bookId: string, input: SaveProgress
     }
   })();
 
-  if (input.playbackSpeed || book.chapters.length) {
+  if (input.playbackSpeed || input.introSkipSeconds !== undefined || input.outroSkipSeconds !== undefined) {
     const key = `playback:${bookId}`;
-    const current = getSetting(userId, key, {});
-    if (input.playbackSpeed) setSetting(userId, key, { ...current, speed: input.playbackSpeed });
+    const next: PlaybackPrefs = { ...getSetting<PlaybackPrefs>(userId, key, {}) };
+    if (input.playbackSpeed) next.speed = input.playbackSpeed;
+    if (input.introSkipSeconds !== undefined) next.introSkipSeconds = input.introSkipSeconds;
+    if (input.outroSkipSeconds !== undefined) next.outroSkipSeconds = input.outroSkipSeconds;
+    setSetting(userId, key, next);
   }
 
   void syncUpstream(bookId, userId, input.position, duration, finished);

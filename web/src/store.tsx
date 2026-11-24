@@ -50,6 +50,7 @@ export function useAuth(): AuthValue {
 // ---------- 播放器 ----------
 export type SleepTimerMode = 'off' | 'time' | 'chapter-end' | 'end-of-next-chapter';
 export interface SleepTimer { mode: SleepTimerMode; value: number; endsAt: number; chapterIndex?: number }
+export interface SkipSettings { introSkipSeconds: number; outroSkipSeconds: number }
 
 interface PlayerValue {
   book: Book | null;
@@ -57,6 +58,8 @@ interface PlayerValue {
   position: number;
   duration: number;
   speed: number;
+  skipSettings: SkipSettings;
+  setSkipSettings: (settings: SkipSettings) => void;
   sleepTimer: SleepTimer;
   bookmarks: Bookmark[];
   open: (book: Book, autoplay?: boolean) => Promise<void>;
@@ -88,6 +91,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playing, setPlaying] = useState(false);
   const [position, setPosition] = useState(0);
   const [speed, setSpeedState] = useState(1);
+  const [skipSettings, setSkipSettingsState] = useState<SkipSettings>({ introSkipSeconds: 0, outroSkipSeconds: 0 });
+  const skipRef = useRef<SkipSettings>({ introSkipSeconds: 0, outroSkipSeconds: 0 });
+  const outroFiredRef = useRef(-1);
+  const suppressIntroRef = useRef(false);
+  const advanceRef = useRef<() => void>(() => undefined);
   const [sleepTimer, setSleepTimerState] = useState<SleepTimer>({ mode: 'off', value: 0, endsAt: 0 });
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const trackIndexRef = useRef(0);
@@ -123,6 +131,43 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch { /* 离线时下一次再同步 */ }
   }, [speed]);
 
+  const persistProgressRef = useRef(persistProgress);
+  useEffect(() => { persistProgressRef.current = persistProgress; }, [persistProgress]);
+
+  // 与 'ended' 事件完全一致的切轨逻辑，片尾跳过也复用它，避免两套行为不一致
+  const advanceToNextTrack = useCallback(() => {
+    const current = bookRef.current;
+    const audio = audioRef.current;
+    if (!current || !audio) return;
+    if (trackIndexRef.current < current.tracks.length - 1) {
+      trackIndexRef.current += 1;
+      outroFiredRef.current = -1;
+      const track = current.tracks[trackIndexRef.current];
+      const chapter = current.chapters.find((item) => item.trackIndex === trackIndexRef.current);
+      chapterStartRef.current = chapter?.start ?? 0;
+      audio.src = mediaUrl(`/books/${current.id}/stream?track=${encodeURIComponent(track.id)}`);
+      const intro = skipRef.current.introSkipSeconds;
+      if (intro > 0) {
+        const applyIntro = () => {
+          if (Number.isFinite(audio.duration) && intro < audio.duration) {
+            try { audio.currentTime = intro; } catch { /* ignore */ }
+            const global = chapterStartRef.current + intro;
+            setPosition(global);
+            positionRef.current = global;
+          }
+        };
+        if (audio.readyState >= 1) applyIntro();
+        else audio.addEventListener('loadedmetadata', applyIntro, { once: true });
+      }
+      void audio.play().catch(() => undefined);
+    } else {
+      audio.pause();
+      void persistProgressRef.current();
+      setPlaying(false);
+    }
+  }, []);
+  useEffect(() => { advanceRef.current = advanceToNextTrack; }, [advanceToNextTrack]);
+
   const loadTrack = useCallback((targetBook: Book, index: number, startOffset: number, autoplay: boolean) => {
     let audio = audioRef.current;
     if (!audio) {
@@ -131,9 +176,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audioRef.current = audio;
 
       audio.addEventListener('timeupdate', () => {
-        const global = chapterStartRef.current + (audio?.currentTime ?? 0);
+        if (!audio) return;
+        const global = chapterStartRef.current + (audio.currentTime ?? 0);
         setPosition(global);
         positionRef.current = global;
+        // 片尾跳过：进入片尾区间时按正常播完的方式切到下一轨，每轨只触发一次
+        const outro = skipRef.current.outroSkipSeconds;
+        const trackDuration = audio.duration;
+        if (outro > 0 && Number.isFinite(trackDuration) && trackDuration > 0 && outro < trackDuration) {
+          if (audio.currentTime >= trackDuration - outro) {
+            if (outroFiredRef.current !== trackIndexRef.current) {
+              outroFiredRef.current = trackIndexRef.current;
+              advanceRef.current();
+            }
+          } else if (audio.currentTime < trackDuration - outro - 1) {
+            // 用户拖回片尾区间之前，允许再次触发
+            outroFiredRef.current = -1;
+          }
+        }
       });
       audio.addEventListener('play', () => {
         setPlaying(true);
@@ -149,21 +209,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           listeningStartRef.current = 0;
         }
       });
-      audio.addEventListener('ended', () => {
-        const current = bookRef.current;
-        if (!current || !audio) return;
-        if (trackIndexRef.current < current.tracks.length - 1) {
-          trackIndexRef.current += 1;
-          const track = current.tracks[trackIndexRef.current];
-          const chapter = current.chapters.find((item) => item.trackIndex === trackIndexRef.current);
-          chapterStartRef.current = chapter?.start ?? 0;
-          audio.src = mediaUrl(`/books/${current.id}/stream?track=${encodeURIComponent(track.id)}`);
-          void audio.play().catch(() => undefined);
-        } else {
-          void persistProgress();
-          setPlaying(false);
-        }
-      });
+      audio.addEventListener('ended', () => advanceRef.current());
       audio.addEventListener('error', () => setPlaying(false));
     }
 
@@ -176,7 +222,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (audio.src !== url) audio.src = url;
     audio.playbackRate = speed;
     const applySeek = () => {
-      try { audio.currentTime = Math.max(0, startOffset - chapterStartRef.current); } catch { /* ignore */ }
+      let local = Math.max(0, startOffset - chapterStartRef.current);
+      // 片头跳过：仅当从轨道开头附近开始播放时跳过，续播到中间不会被打断；手动拖动定位时不跳
+      const intro = skipRef.current.introSkipSeconds;
+      if (!suppressIntroRef.current && intro > 0 && local < intro
+        && Number.isFinite(audio.duration) && intro < audio.duration) {
+        local = intro;
+        const global = chapterStartRef.current + local;
+        setPosition(global);
+        positionRef.current = global;
+      }
+      suppressIntroRef.current = false;
+      try { audio.currentTime = local; } catch { /* ignore */ }
       if (autoplay) void audio.play().catch(() => setPlaying(false));
     };
     if (audio.readyState >= 1) applySeek();
@@ -195,10 +252,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const selected = detailed ?? next;
     setBook(selected);
     bookRef.current = selected;
-    const savedSpeed = await api<{ playback?: { speed?: number } }>('/settings')
-      .catch((): { playback?: { speed?: number } } => ({}));
-    const preferred = savedSpeed?.playback?.speed ?? 1;
+    type PlaybackSettings = { speed?: number; introSkipSeconds?: number; outroSkipSeconds?: number };
+    const allSettings = await api<Record<string, PlaybackSettings>>('/settings')
+      .catch((): Record<string, PlaybackSettings> => ({}));
+    const perBook = allSettings[`playback:${selected.id}`];
+    const preferred = perBook?.speed ?? allSettings.playback?.speed ?? 1;
     setSpeedState(preferred);
+    const skip: SkipSettings = {
+      introSkipSeconds: perBook?.introSkipSeconds ?? 0,
+      outroSkipSeconds: perBook?.outroSkipSeconds ?? 0
+    };
+    setSkipSettingsState(skip);
+    skipRef.current = skip;
+    outroFiredRef.current = -1;
     const startAt = next.progress?.finished ? 0 : next.progress?.position ?? 0;
     setPosition(startAt);
     positionRef.current = startAt;
@@ -243,6 +309,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const wanted = Math.min(chapter.trackIndex, current.tracks.length - 1);
     const relative = Math.max(0, bounded - (current.chapters.find((item) => item.trackIndex === wanted)?.start ?? 0));
     if (wanted !== trackIndexRef.current) {
+      suppressIntroRef.current = true; // 手动定位到用户指定的位置，不触发片头跳过
+      outroFiredRef.current = -1;
       loadTrack(current, wanted, bounded, playing);
     } else {
       try { audio.currentTime = relative; } catch { /* ignore */ }
@@ -264,6 +332,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setSpeedState(value);
     if (audioRef.current) audioRef.current.playbackRate = value;
     if (bookRef.current) void apiPatchSpeed(bookRef.current.id, value);
+  }, []);
+
+  const setSkipSettings = useCallback((next: SkipSettings) => {
+    const clamp = (value: number) => Math.max(0, Math.min(600, Math.round(Number.isFinite(value) ? value : 0)));
+    const bounded: SkipSettings = {
+      introSkipSeconds: clamp(next.introSkipSeconds),
+      outroSkipSeconds: clamp(next.outroSkipSeconds)
+    };
+    setSkipSettingsState(bounded);
+    skipRef.current = bounded;
+    outroFiredRef.current = -1;
+    const current = bookRef.current;
+    if (current) {
+      // 与倍速相同的持久化路径：PUT /progress/:bookId 写入 settings 的 playback:<bookId>
+      void apiPut(`/progress/${current.id}`, {
+        position: Math.round(positionRef.current),
+        introSkipSeconds: bounded.introSkipSeconds,
+        outroSkipSeconds: bounded.outroSkipSeconds
+      }).catch(() => undefined);
+    }
   }, []);
 
   const setSleepTimer = useCallback((timer: SleepTimer) => setSleepTimerState(timer), []);
@@ -353,9 +441,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const duration = book?.duration ?? 0;
   const value = useMemo<PlayerValue>(() => ({
-    book, playing, position, duration, speed, sleepTimer, bookmarks,
-    open, close, toggle, seek, skip, setSpeed, setSleepTimer, addBookmark, refreshBookmarks, applyAudioSettings
-  }), [book, playing, position, duration, speed, sleepTimer, bookmarks, open, close, toggle, seek, skip, setSpeed, setSleepTimer, addBookmark, refreshBookmarks, applyAudioSettings]);
+    book, playing, position, duration, speed, skipSettings, sleepTimer, bookmarks,
+    open, close, toggle, seek, skip, setSpeed, setSkipSettings, setSleepTimer, addBookmark, refreshBookmarks, applyAudioSettings
+  }), [book, playing, position, duration, speed, skipSettings, sleepTimer, bookmarks, open, close, toggle, seek, skip, setSpeed, setSkipSettings, setSleepTimer, addBookmark, refreshBookmarks, applyAudioSettings]);
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }

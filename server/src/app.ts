@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { config } from './config.js';
 import { AppError } from './errors.js';
 import { logger, requestId } from './logger.js';
@@ -26,7 +26,8 @@ export function createApp() {
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
-  app.use(express.json({ limit: '1mb' }));
+  // 恢复备份会一次性提交整个备份 JSON（收听历史可能较大），放宽到 10mb
+  app.use(express.json({ limit: '10mb' }));
 
   app.use((req, res, next) => {
     const startedAt = Date.now();
@@ -58,7 +59,7 @@ export function createApp() {
 
   app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof ZodError) {
-      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: '请求参数不正确', details: error.flatten(), requestId: req.requestId } });
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: '请求参数不正确', details: z.flattenError(error), requestId: req.requestId } });
       return;
     }
     if (error instanceof AppError) {

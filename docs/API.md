@@ -65,7 +65,7 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET/PUT | `/progress` / `/progress/:bookId` | 进度、播放会话 |
+| GET/PUT | `/progress` / `/progress/:bookId` | 进度、播放会话；PUT 可带 `playbackSpeed`、`introSkipSeconds`、`outroSkipSeconds`（0–600 秒）保存每本书的播放偏好 |
 | POST | `/progress/:bookId/finish` | 标记完成状态 |
 | DELETE | `/progress/:bookId` | 重置进度 |
 | GET/POST | `/bookmarks` | 书签列表 / 新建 |
@@ -74,6 +74,8 @@ Base URL：`/api`。除标注外均需 `Authorization: Bearer <accessToken>`。
 | GET/PATCH/DELETE | `/settings` / `/settings/:key` | 用户设置 |
 | GET/POST | `/playlists` | 读取播放清单 / 添加书籍（POST body `{name, bookId}`） |
 | DELETE | `/playlists/:name/books/:bookId` | 从播放清单移除书籍 |
+| GET | `/backup` | 导出当前用户备份 JSON（附件下载）：进度、书签、收听历史与全部设置；信封含 `app`、`formatVersion`、`exportedAt`、`user` |
+| POST | `/backup/restore` | 恢复备份（body 为备份 JSON）：严格校验后在一个事务内**替换**当前用户的上述数据，只影响请求者本人；书籍不在当前书库中的条目跳过并在响应 `skipped` 中计数；格式不合法返回 400 且不写入 |
 
 ## 转录与任务
 
